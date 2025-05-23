@@ -10,8 +10,11 @@ namespace GraphicsLib.Types
         private float nearClipPlane = 0.1f;
         private static readonly Vector3 up = Vector3.UnitY;
 
+        public bool IsPerspectiveCamera { get; set; } = true;
         public float Azimuth { get => azimuth; set => SetAzimuth(value); }
         public float Polar { get => polar; set => SetPolar(value); }
+        public float OrthographicWidth { get; set; } = 10f;
+        public float OrthographicHeight { get; set; } = 10f;
         public Vector3 Position { get => GetPosition(); set => SetPosition(value); }
         public float Distance { get => distance; set => distance = value > 0 ? value : 1; }
         public Vector3 Target { get; set; }
@@ -32,7 +35,15 @@ namespace GraphicsLib.Types
 
         private Matrix4x4 GetProjectionMatrix()
         {
-            return Matrix4x4.CreatePerspectiveFieldOfView(FieldOfView, ScreenWidth / ScreenHeight, nearClipPlane, FarClipPlane);
+            if (IsPerspectiveCamera)
+            {
+                return Matrix4x4.CreatePerspectiveFieldOfView(FieldOfView, ScreenWidth / ScreenHeight, nearClipPlane, FarClipPlane);
+            }
+            else
+            {
+                return Matrix4x4.CreateOrthographic(OrthographicWidth, OrthographicHeight, nearClipPlane, FarClipPlane);
+            }
+            
         }
         private Matrix4x4 GetViewMatrix()
         {

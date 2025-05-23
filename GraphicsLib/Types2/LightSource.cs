@@ -150,9 +150,12 @@ namespace GraphicsLib.Types2
     }
     public class DirectionalLightSource : LightSource
     {
-        public required Vector3 Direction { get; set; }
-        public required float CoverSize { get; set; }
-
+        private Vector3 direction;
+        public required Vector3 Direction { get => direction; set { direction = Vector3.Normalize(value); UpdateShadowMaps(); } }
+        public required float CoverSize { get; set; } = 1024;
+        public ShadowMap ShadowMap { get; private set; }
+        public Camera ShadowViewport { get; private set; }
+        private Matrix4x4 WorldToProjection { get; set; }
         public override void CalculateLightDirAndIntensity(in Vector3 position, out Vector3 lightDir, out float intensity)
         {
             lightDir = Direction;
@@ -161,12 +164,42 @@ namespace GraphicsLib.Types2
 
         public override float GetShadowCover(in Vector3 position)
         {
-            throw new NotImplementedException();
+            Vector4 projection = Vector4.Transform(new Vector4(position, 1f), WorldToProjection);
+            Vector2 uv = new Vector2(projection.X, -projection.Y) * 0.5f + new Vector2(0.5f);
+            uv = Vector2.Clamp(uv, Vector2.Zero, new Vector2(1));
+            int centerX = (int)(uv.X * (int)(ShadowMapSize - 1));
+            int centerY = (int)(uv.Y * (int)(ShadowMapSize - 1));
+            float depth = projection.Z;
+            float shadow = 0;
+            for (int dy = -1; dy <= 1; dy++)
+            {
+                for (int dx = -1; dx <= 1; dx++)
+                {
+                    int x = int.Clamp(centerX + dx, 0, (int)(ShadowMapSize - 1));
+                    int y = int.Clamp(centerY + dy, 0, (int)(ShadowMapSize - 1));
+                    float sampledDepth = 1f / ShadowMap[x, y];
+                    shadow += (depth - Bias) > -sampledDepth ? 1.0f : 0.0f;
+                }
+            }
+            return shadow / 9;
         }
 
         protected override void UpdateShadowMaps()
         {
-            throw new NotImplementedException();
+            ShadowMap = new ShadowMap((int)ShadowMapSize);
+            float distanceXY = MathF.Sqrt(direction.X * direction.X + direction.Z * direction.Z);
+            float polar = MathF.PI - MathF.Atan2(distanceXY, direction.Y);
+            float azimuth = MathF.Atan2(-direction.X, -direction.Z);
+            ShadowViewport = new Camera(azimuth, polar, 1f, Vector3.Zero)
+            {
+                ScreenHeight = ShadowMapSize,
+                ScreenWidth = ShadowMapSize,
+                FarClipPlane = 10000f,
+                IsPerspectiveCamera = false,
+                OrthographicHeight = CoverSize,
+                OrthographicWidth = CoverSize,
+            };
+            WorldToProjection = ShadowViewport.ViewMatrix * ShadowViewport.ProjectionMatrix;
         }
     }
     public class SpotLightSource : LightSource
@@ -186,7 +219,15 @@ namespace GraphicsLib.Types2
         {
             lightDir = Vector3.Normalize(position - Position);
             float theta = Vector3.Dot(Direction, lightDir);
-            intensity = float.Clamp(float.Lerp(Intensity, 0, (theta - CutOffCos) / (OuterCutCos - CutOffCos)), 0, Intensity);
+            if(OuterCutCos < CutOffCos)
+            {
+                intensity = float.Clamp(float.Lerp(Intensity, 0, (theta - CutOffCos) / (OuterCutCos - CutOffCos)), 0, Intensity);
+            }
+            else
+            {
+                intensity = theta < OuterCutCos ? 0 : Intensity;
+            }
+            
         }
 
         public override float GetShadowCover(in Vector3 position)
