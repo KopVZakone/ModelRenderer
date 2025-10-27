@@ -9,7 +9,9 @@ namespace GraphicsLib.Types2
 
         public required Vector3 Color { get; set; }
         public required float Intensity { get; set; }
-        public float Bias { get; set; } = 0.04f;
+        public float Bias { get; set; } = 0.01f;
+        protected const float zNear = 1f;
+        protected const float zFar = 10000f;
         public required float ShadowMapSize { get => shadowMapSize; set { shadowMapSize = value; UpdateShadowMaps(); } }
         public abstract float GetShadowCover(in Vector3 position);
         protected abstract void UpdateShadowMaps();
@@ -86,6 +88,7 @@ namespace GraphicsLib.Types2
             uv = Vector2.Clamp(uv, Vector2.Zero, new Vector2(1));
             int centerX = (int)(uv.X * (int)(ShadowMapSize - 1));
             int centerY = (int)(uv.Y * (int)(ShadowMapSize - 1));
+            float correctedDepth = (-depth * (zFar / (zNear - zFar)) + zNear * zFar / (zNear - zFar)) / depth;
             float shadow = 0;
             //{
             //    float sampledDepth = 1f / ShadowMaps[bufferIndex][centerX, centerY];
@@ -98,8 +101,8 @@ namespace GraphicsLib.Types2
                 {
                     int x = int.Clamp(centerX + dx, 0, (int)(ShadowMapSize - 1));
                     int y = int.Clamp(centerY + dy, 0, (int)(ShadowMapSize - 1));
-                    float sampledDepth = 1f / ShadowMaps[bufferIndex][x, y];
-                    shadow += (depth - Bias) > -sampledDepth ? 1.0f : 0.0f;
+                    float sampledDepth = ShadowMaps[bufferIndex][x, y];
+                    shadow += (correctedDepth - Bias) > sampledDepth ? 1.0f : 0.0f;
                 }
             }
             return shadow / 9;
@@ -125,7 +128,8 @@ namespace GraphicsLib.Types2
                     ScreenHeight = ShadowMapSize,
                     ScreenWidth = ShadowMapSize,
                     FieldOfView = MathF.PI / 2,
-                    FarClipPlane = 1000f,
+                    FarClipPlane = zFar,
+                    NearClipPlane = zNear,
                 };
             }
         }
@@ -177,8 +181,8 @@ namespace GraphicsLib.Types2
                 {
                     int x = int.Clamp(centerX + dx, 0, (int)(ShadowMapSize - 1));
                     int y = int.Clamp(centerY + dy, 0, (int)(ShadowMapSize - 1));
-                    float sampledDepth = 1f / ShadowMap[x, y];
-                    shadow += (depth - Bias) > -sampledDepth ? 1.0f : 0.0f;
+                    float sampledDepth = ShadowMap[x, y];
+                    shadow += !float.IsInfinity(sampledDepth) && (depth *(1 - Bias)) > sampledDepth ? 1.0f : 0.0f;
                 }
             }
             return shadow / 9;
@@ -194,7 +198,8 @@ namespace GraphicsLib.Types2
             {
                 ScreenHeight = ShadowMapSize,
                 ScreenWidth = ShadowMapSize,
-                FarClipPlane = 10000f,
+                FarClipPlane = zFar,
+                NearClipPlane = zNear,
                 IsPerspectiveCamera = false,
                 OrthographicHeight = CoverSize,
                 OrthographicWidth = CoverSize,
@@ -232,12 +237,14 @@ namespace GraphicsLib.Types2
 
         public override float GetShadowCover(in Vector3 position)
         {
+            //Vector4 projection = Vector4.Transform(Vector4.Transform(new Vector4(position, 1f), ShadowViewport.ViewMatrix), ShadowViewport.ProjectionMatrix);
             Vector4 projection = Vector4.Transform(new Vector4(position, 1f), WorldToProjection);
-            Vector2 uv = new Vector2(projection.X / projection.W, -projection.Y / projection.W) * 0.5f + new Vector2(0.5f);
+            projection /= projection.W;
+            Vector2 uv = new Vector2(projection.X, -projection.Y) * 0.5f + new Vector2(0.5f);
             uv = Vector2.Clamp(uv, Vector2.Zero, new Vector2(1));
             int centerX = (int)(uv.X * (int)(ShadowMapSize - 1));
             int centerY = (int)(uv.Y * (int)(ShadowMapSize - 1));
-            float depth = projection.W;
+            float depth = projection.Z;
             float shadow = 0;
             for (int dy = -1; dy <= 1; dy++)
             {
@@ -245,8 +252,8 @@ namespace GraphicsLib.Types2
                 {
                     int x = int.Clamp(centerX + dx, 0, (int)(ShadowMapSize - 1));
                     int y = int.Clamp(centerY + dy, 0, (int)(ShadowMapSize - 1));
-                    float sampledDepth = 1f / ShadowMap[x, y];
-                    shadow += (depth - Bias) > -sampledDepth ? 1.0f : 0.0f;
+                    float sampledDepth = ShadowMap[x, y];
+                    shadow += !float.IsInfinity(sampledDepth) && (depth - Bias) > sampledDepth ? 1.0f : 0.0f;
                 }
             }
             return shadow / 9;
@@ -263,7 +270,8 @@ namespace GraphicsLib.Types2
                 ScreenHeight = ShadowMapSize,
                 ScreenWidth = ShadowMapSize,
                 FieldOfView = MathF.Acos(OuterCutCos),
-                FarClipPlane = 10000f,
+                FarClipPlane = zFar,
+                NearClipPlane = zNear,
             };
             WorldToProjection = ShadowViewport.ViewMatrix * ShadowViewport.ProjectionMatrix;
         }

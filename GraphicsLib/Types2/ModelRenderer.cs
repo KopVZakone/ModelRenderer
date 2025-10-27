@@ -54,6 +54,15 @@ namespace GraphicsLib.Types2
                             RenderScene<ShadowMapShader, ShadowMapVertex, ShadowMapBlendShader, ShadowMapBlendVertex>(scene, shadowMap.DepthMap, false);                            
                         }
                         break;
+                    case DirectionalLightSource directionalLightSource:
+                        {
+                            var shadowMap = directionalLightSource.ShadowMap;
+                            shadowMap.DepthMap.Clear();
+                            var viewport = directionalLightSource.ShadowViewport;
+                            scene.Camera = viewport;
+                            RenderScene<ShadowMapShader, ShadowMapVertex, ShadowMapBlendShader, ShadowMapBlendVertex>(scene, shadowMap.DepthMap, false);                            
+                        }
+                        break;  
                 }
             }
             scene.Camera = previousCamera;
@@ -677,7 +686,7 @@ namespace GraphicsLib.Types2
                     Vertex lineInterpolant = leftPoint + xPrestep * dLineInterpolant;
                     for (int x = xStart; x < xEnd; x++, lineInterpolant += dLineInterpolant)
                     {
-                        if (zBuffer!.Test(x, y, -lineInterpolant.Position.W))
+                        if (zBuffer!.Test(x, y, lineInterpolant.Position.Z))
                         {
                             Vertex correctedPoint = lineInterpolant * (1 / lineInterpolant.Position.W);
 
@@ -724,7 +733,7 @@ namespace GraphicsLib.Types2
                                             | (uint)(finalColor.X) << 16
                                             | (uint)(finalColor.Y) << 8
                                             | (uint)(finalColor.Z);
-                                zBuffer.TestAndSet(x, y, -lineInterpolant.Position.W, colorUint);
+                                zBuffer.TestAndSet(x, y, lineInterpolant.Position.Z, colorUint);
                             }
                             else
                             {
@@ -732,7 +741,7 @@ namespace GraphicsLib.Types2
                                             | (uint)(color.X) << 16
                                             | (uint)(color.Y) << 8
                                             | (uint)(color.Z);
-                                zBuffer.TestAndSet(x, y, -lineInterpolant.Position.W, colorUint);
+                                zBuffer.TestAndSet(x, y, lineInterpolant.Position.Z, colorUint);
                             }
 
                         }

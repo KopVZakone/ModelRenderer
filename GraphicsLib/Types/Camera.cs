@@ -22,7 +22,6 @@ namespace GraphicsLib.Types
 
         public Matrix4x4 ProjectionMatrix { get => GetProjectionMatrix(); }
         public Matrix4x4 ViewPortMatrix { get => GetViewPortMatrix(); }
-        //дальше лень
         public float NearClipPlane { get => nearClipPlane; set => SetNearClipPlane(value); }
         public float FarClipPlane { get; set; } = float.PositiveInfinity;
         public float FieldOfView { get; set; } = MathF.PI / 3;

@@ -106,10 +106,10 @@ namespace Lab1
                         result[lightSources.IndexOf(lightSource)] = new DirectionalLightSource()
                         {
                             Color = new Vector3(directionalLight.Color.X, directionalLight.Color.Y, directionalLight.Color.Z),
+                            CoverSize = directionalLight.CoverSize,
                             Direction = Vector3.Normalize(new Vector3(directionalLight.Direction.X, directionalLight.Direction.Y, directionalLight.Direction.Z)),
                             Intensity = directionalLight.Intensity,
                             ShadowMapSize = directionalLight.ShadowMapSize,
-                            CoverSize = directionalLight.CoverSize,
                         };
                         break;
                     case SpotLightSourceModel spotLight:
