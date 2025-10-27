@@ -13,7 +13,7 @@ namespace GraphicsLib.Types2
 {
     public class ModelRenderer
     {
-        public ZBufferV2? Zbuffer { get; set; }
+        public ZBufferV3? Zbuffer { get; set; }
         private static readonly Queue<(Matrix4x4 Transform, ModelSkin? Skin, ModelPrimitive Primitive)> nonOpaqueQueue = [];
         private static readonly Queue<(Matrix4x4 Transform, ModelSkin? Skin, ModelPrimitive Primitive)> opaqueQueue = [];
 
@@ -68,7 +68,7 @@ namespace GraphicsLib.Types2
             scene.Camera = previousCamera;
         }
 
-        public static void RenderScene<OpaqueShader, OpaqueVertex, NonOpaqueShader, NonOpaqueVertex>(in ModelScene scene, in ZBufferV2 zBuffer, bool sortNonOpaque = true)
+        public static void RenderScene<OpaqueShader, OpaqueVertex, NonOpaqueShader, NonOpaqueVertex>(in ModelScene scene, in ZBufferV3 zBuffer, bool sortNonOpaque = true)
             where OpaqueShader : IModelShader<OpaqueVertex>, new() where OpaqueVertex : struct, IModelVertex<OpaqueVertex>
             where NonOpaqueShader : IModelShader<NonOpaqueVertex>, new() where NonOpaqueVertex : struct, IModelVertex<NonOpaqueVertex>
         {
@@ -142,7 +142,8 @@ namespace GraphicsLib.Types2
             if (Zbuffer == null)
             {
                 Zbuffer = new((int)scene.Camera.ScreenWidth, (int)scene.Camera.ScreenHeight);
-                Zbuffer.ChangeDefaultColor(0xFF0080AA);
+                //0xFF0080AA
+                Zbuffer.ChangeDefaultColor(new Vector4(0, 0.5f, 0.7f, 1f));
             }
             Zbuffer.ResizeAndClear((int)scene.Camera.ScreenWidth, (int)scene.Camera.ScreenHeight);
             if (scene.Skins != null)
@@ -154,7 +155,7 @@ namespace GraphicsLib.Types2
             }
             FillShadowMaps(scene);
             RenderScene<Shader, Vertex, Shader, Vertex>(scene, Zbuffer, true);
-            bitmap.FlushZBufferV2(Zbuffer);
+            bitmap.FlushZBufferV3(Zbuffer);
         }
         public void Render<Shader, Vertex>(in ModelScene scene, in WriteableBitmap bitmap) where Shader : IModelShader<Vertex>, new() where Vertex : struct, IModelVertex<Vertex>
         {
@@ -163,7 +164,8 @@ namespace GraphicsLib.Types2
             if (Zbuffer == null)
             {
                 Zbuffer = new((int)scene.Camera.ScreenWidth, (int)scene.Camera.ScreenHeight);
-                Zbuffer.ChangeDefaultColor(0xFF0080AA);
+                //0xFF0080AA
+                Zbuffer.ChangeDefaultColor(new Vector4(0, 0.5f, 0.7f, 1f));
             }
             Zbuffer.ResizeAndClear((int)scene.Camera.ScreenWidth, (int)scene.Camera.ScreenHeight);
             if (scene.Skins != null)
@@ -174,7 +176,7 @@ namespace GraphicsLib.Types2
                 }
             }
             RenderScene<Shader, Vertex, Shader, Vertex>(scene, Zbuffer, true);
-            bitmap.FlushZBufferV2(Zbuffer);
+            bitmap.FlushZBufferV3(Zbuffer);
         }
         private static void CalculateBindingMatrices(in ModelNode node, ModelSkin skin, in Matrix4x4 parentTransform)
         {
@@ -271,7 +273,7 @@ namespace GraphicsLib.Types2
         {
             public ModelScene? Scene { get; set; }
             private ModelPrimitive? currentPrimitive;
-            private ZBufferV2? zBuffer;
+            private ZBufferV3? zBuffer;
             private Matrix4x4 cameraTransform;
             private Matrix4x4 projectionTransform;
             private Matrix4x4 viewPortTransform;
@@ -345,7 +347,7 @@ namespace GraphicsLib.Types2
                     worldSpacevViewFrustumPlanes[i] = Plane.Normalize(worldSpacevViewFrustumPlanes[i]);
                 }
             }
-            public void BindZBuffer(ZBufferV2 zBuffer)
+            public void BindZBuffer(ZBufferV3 zBuffer)
             {
                 this.zBuffer = zBuffer;
             }
@@ -716,32 +718,20 @@ namespace GraphicsLib.Types2
                             //{
                             //    color.Z = MathF.Pow((color.Z + 0.055f) / 1.055f, 2.4f);
                             //}
-                            color *= 0xFF;
+                            //color *= 0xFF;
                             if (currentPrimitive!.Material?.alphaMode == Types.GltfTypes.GltfMaterialAlphaMode.BLEND)
                             {
                                 if (color.W <= 0)
                                 {
                                     continue;
                                 }
-                                uint encodedPrevColor = zBuffer[x, y].color;
-                                Vector4 prevColor = new((encodedPrevColor >> 16) & 0xFF,
-                                                        (encodedPrevColor >> 8) & 0xFF,
-                                                        encodedPrevColor & 0xFF,
-                                                        (encodedPrevColor >> 24) & 0xFF);
-                                var finalColor = Vector4.Lerp(prevColor, color, color.W / 0xFF);
-                                uint colorUint = (uint)(finalColor.W) << 24
-                                            | (uint)(finalColor.X) << 16
-                                            | (uint)(finalColor.Y) << 8
-                                            | (uint)(finalColor.Z);
-                                zBuffer.TestAndSet(x, y, lineInterpolant.Position.Z, colorUint);
+                                Vector4 prevColor = zBuffer[x, y].color;
+                                var finalColor = Vector4.Lerp(prevColor, color, color.W);
+                                zBuffer.TestAndSet(x, y, lineInterpolant.Position.Z, finalColor);
                             }
                             else
                             {
-                                uint colorUint = (uint)(color.W) << 24
-                                            | (uint)(color.X) << 16
-                                            | (uint)(color.Y) << 8
-                                            | (uint)(color.Z);
-                                zBuffer.TestAndSet(x, y, lineInterpolant.Position.Z, colorUint);
+                                zBuffer.TestAndSet(x, y, lineInterpolant.Position.Z, color);
                             }
 
                         }

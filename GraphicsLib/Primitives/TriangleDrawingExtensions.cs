@@ -1,4 +1,5 @@
 ﻿using GraphicsLib.Types;
+using GraphicsLib.Types2;
 using System.Numerics;
 using System.Windows.Media.Imaging;
 
@@ -170,6 +171,22 @@ namespace GraphicsLib.Primitives
                 for (int i = 0; i < length; i++)
                 {
                     ptr[i] = zbufferV2.At(i).color;
+                }
+            }
+        }
+        public static void FlushZBufferV3(this WriteableBitmap bitmap, ZBufferV3 zbufferV2)
+        {
+            unsafe
+            {
+                uint* ptr = (uint*)bitmap.BackBuffer;
+                int x = bitmap.PixelWidth;
+                int y = bitmap.PixelHeight;
+                int length = x * y;
+                for (int i = 0; i < length; i++)
+                {
+                    Vector4 color = zbufferV2.At(i).color;
+                    uint c = (uint)(color.X * 255) << 16 | (uint)(color.Y * 255) << 8 | (uint)(color.Z * 255) | (uint)(color.W * 255) << 24;
+                    ptr[i] = c;
                 }
             }
         }

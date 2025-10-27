@@ -11,21 +11,21 @@ namespace GraphicsLib.Types2
     public class ShadowMap
     {
         public int Size { get; private set; }
-        public ZBufferV2 DepthMap { get; private set; }
+        public ZBufferV3 DepthMap { get; private set; }
         public ShadowMap()
         {
             Size = 1024;
-            DepthMap = new ZBufferV2(Size, Size);
+            DepthMap = new ZBufferV3(Size, Size);
         }
         public ShadowMap(int size)
         {
             Size = size;
-            DepthMap = new ZBufferV2(Size, Size);
+            DepthMap = new ZBufferV3(Size, Size);
         }
         public void Resize(int size)
         {
             Size = size;
-            DepthMap = new ZBufferV2(Size, Size);
+            DepthMap = new ZBufferV3(Size, Size);
         }
         public float this[int x, int y]
         {
