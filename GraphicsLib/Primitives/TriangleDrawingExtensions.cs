@@ -185,7 +185,8 @@ namespace GraphicsLib.Primitives
                 for (int i = 0; i < length; i++)
                 {
                     Vector4 color = zbufferV2.At(i).color;
-                    uint c = (uint)(color.X * 255) << 16 | (uint)(color.Y * 255) << 8 | (uint)(color.Z * 255) | (uint)(color.W * 255) << 24;
+                    Vector3 clampedColor = Vector3.Clamp(color.AsVector3(), Vector3.Zero, new Vector3(1));
+                    uint c = (uint)(clampedColor.X * 255) << 16 | (uint)(clampedColor.Y * 255) << 8 | (uint)(clampedColor.Z * 255) | (uint)(color.W * 255) << 24;
                     ptr[i] = c;
                 }
             }

@@ -32,6 +32,7 @@ namespace GraphicsLib.Types2.Shaders
         static Vector4* tangentsArray = null;
         static Vector2* normalUvsArray = null;
         static Vector2* roughnessMetallicUvsArray = null;
+        static Vector2* emissiveUvsArray = null;
         static ushort* jointsArray = null;
         static float* weightsArray = null;
 
@@ -79,6 +80,7 @@ namespace GraphicsLib.Types2.Shaders
                 roughnessMetallicUvsArray = ModelShaderUtils.GetAttributePointer<Vector2>(primitive, $"TEXCOORD_{currentMaterial!.metallicRoughnessCoordsIndex}");
                 jointsArray = ModelShaderUtils.GetJointsPointer(primitive);
                 weightsArray = ModelShaderUtils.GetAttributePointer<float>(primitive, "WEIGHTS_0");
+                emissiveUvsArray = ModelShaderUtils.GetAttributePointer<Vector2>(primitive, $"TEXCOORD_{currentMaterial!.emissiveCoordsIndex}");
             }
         }
         private static void UnbindAttributes()
@@ -91,6 +93,7 @@ namespace GraphicsLib.Types2.Shaders
             roughnessMetallicUvsArray = null;
             jointsArray = null;
             weightsArray = null;
+            emissiveUvsArray = null;
         }       
 
         public static Vector4 PixelShader(in PbrVertex input)
@@ -164,7 +167,12 @@ namespace GraphicsLib.Types2.Shaders
                     finalColor += bdfs * lightSource.Color * (nDotL * intensity);
                 }
             }
-            return new Vector4(Vector3.Clamp(finalColor, Vector3.Zero, new Vector3(1)), diffuseColor.W);
+            finalColor = Vector3.Clamp(finalColor, Vector3.Zero, new Vector3(1));
+            if (currentMaterial.emissiveTextureSampler != null)
+            {
+                finalColor += currentMaterial.emissiveTextureSampler.Sample(input.EmissiveUv).AsVector3() * currentMaterial.emissiveFactor;
+            }
+            return new Vector4(finalColor, diffuseColor.W);
         }
         public static PbrVertex VertexShader(in ModelPrimitive primitive, in int vertexDataIndex)
         {
@@ -200,7 +208,8 @@ namespace GraphicsLib.Types2.Shaders
                 Uv = uvsArray==null? Vector2.Zero : uvsArray[vertexDataIndex],
                 Tangent = worldTangent,
                 NormalUv = normalUvsArray==null? Vector2.Zero : normalUvsArray[vertexDataIndex],
-                RoughnessMetallicUv = roughnessMetallicUvsArray==null? Vector2.Zero : roughnessMetallicUvsArray[vertexDataIndex]
+                RoughnessMetallicUv = roughnessMetallicUvsArray==null? Vector2.Zero : roughnessMetallicUvsArray[vertexDataIndex],
+                EmissiveUv = emissiveUvsArray==null? Vector2.Zero : emissiveUvsArray[vertexDataIndex]
             };
         }
         private static Matrix4x4 GetInversedBoneTransform(in int jointIndex)
@@ -216,6 +225,7 @@ namespace GraphicsLib.Types2.Shaders
             public Vector2 Uv { readonly get => uv; set => uv = value; }
             public Vector2 NormalUv { readonly get => normalUv; set => normalUv = value; }
             public Vector2 RoughnessMetallicUv { readonly get => roughnessMetallicUv; set => roughnessMetallicUv = value; }
+            public Vector2 EmissiveUv { readonly get => emissiveUv; set => emissiveUv = value; }
 
             private Vector4 position;
             private Vector4 tangent;
@@ -224,6 +234,7 @@ namespace GraphicsLib.Types2.Shaders
             private Vector2 uv;
             private Vector2 normalUv;
             private Vector2 roughnessMetallicUv;
+            private Vector2 emissiveUv;
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static PbrVertex Lerp(PbrVertex a, PbrVertex b, float t)
@@ -243,6 +254,7 @@ namespace GraphicsLib.Types2.Shaders
                         tangent = Vector4.Lerp(a.tangent, b.tangent, t),
                         normalUv = Vector2.Lerp(a.normalUv, b.normalUv, t),
                         roughnessMetallicUv = Vector2.Lerp(a.roughnessMetallicUv, b.roughnessMetallicUv, t),
+                        emissiveUv = Vector2.Lerp(a.emissiveUv, b.emissiveUv, t),
                     };
                 }
 
@@ -258,6 +270,7 @@ namespace GraphicsLib.Types2.Shaders
                         Avx.Store((float*)&vertex.position, Avx.Add(Avx.LoadVector256((float*)&lhs.position), Avx.LoadVector256((float*)&rhs.position)));
                         Avx.Store((float*)&vertex.normal, Avx.Add(Avx.LoadVector256((float*)&lhs.normal), Avx.LoadVector256((float*)&rhs.normal)));
                         Sse.Store((float*)&vertex.normalUv, Sse.Add(Sse.LoadVector128((float*)&lhs.normalUv), Sse.LoadVector128((float*)&rhs.normalUv)));
+                        vertex.EmissiveUv = lhs.EmissiveUv + rhs.EmissiveUv;
                         return vertex;
                     }
                 }
@@ -272,6 +285,7 @@ namespace GraphicsLib.Types2.Shaders
                         tangent = lhs.tangent + rhs.tangent,
                         normalUv = lhs.normalUv + rhs.normalUv,
                         roughnessMetallicUv = lhs.roughnessMetallicUv + rhs.roughnessMetallicUv,
+                        emissiveUv = lhs.emissiveUv + rhs.emissiveUv,
                     };
 
                 }
@@ -288,6 +302,7 @@ namespace GraphicsLib.Types2.Shaders
                         Avx.Store((float*)&vertex.position, Avx.Subtract(Avx.LoadVector256((float*)&lhs.position), Avx.LoadVector256((float*)&rhs.position)));
                         Avx.Store((float*)&vertex.normal, Avx.Subtract(Avx.LoadVector256((float*)&lhs.normal), Avx.LoadVector256((float*)&rhs.normal)));
                         Sse.Store((float*)&vertex.normalUv, Sse.Subtract(Sse.LoadVector128((float*)&lhs.normalUv), Sse.LoadVector128((float*)&rhs.normalUv)));
+                        vertex.emissiveUv = lhs.emissiveUv - rhs.emissiveUv;
                         return vertex;
                     }
                 }
@@ -302,6 +317,7 @@ namespace GraphicsLib.Types2.Shaders
                         tangent = lhs.tangent - rhs.tangent,
                         normalUv = lhs.normalUv - rhs.normalUv,
                         roughnessMetallicUv = lhs.roughnessMetallicUv - rhs.roughnessMetallicUv,
+                        emissiveUv = lhs.emissiveUv - rhs.emissiveUv,
                     };
                 }
             }
@@ -317,6 +333,7 @@ namespace GraphicsLib.Types2.Shaders
                         Avx.Store((float*)&vertex.position, Avx.Multiply(Avx.LoadVector256((float*)&lhs.position), multiplier));
                         Avx.Store((float*)&vertex.normal, Avx.Multiply(Avx.LoadVector256((float*)&lhs.normal), multiplier));
                         Sse.Store((float*)&vertex.normalUv, Sse.Multiply(Sse.LoadVector128((float*)&lhs.normalUv), multiplier.GetLower()));
+                        vertex.emissiveUv = lhs.emissiveUv * scalar;
                         return vertex;
                     }
                 }
@@ -331,6 +348,7 @@ namespace GraphicsLib.Types2.Shaders
                         tangent = lhs.tangent * scalar,
                         normalUv = lhs.normalUv * scalar,
                         roughnessMetallicUv = lhs.roughnessMetallicUv * scalar,
+                        emissiveUv = lhs.emissiveUv * scalar,
                     };
                 }
             }

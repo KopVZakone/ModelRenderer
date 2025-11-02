@@ -13,6 +13,7 @@ namespace GraphicsLib.Types
 
         //also known as albedo
         public Vector4 baseColor = new(1, 1, 1, 1);
+        public Vector3 emissiveFactor = new(0, 0, 0);
         public Sampler? baseColorTextureSampler;
         public int baseColorCoordsIndex = 0;
         public Sampler? normalTextureSampler;
@@ -21,6 +22,8 @@ namespace GraphicsLib.Types
         public int metallicRoughnessCoordsIndex = 0;
         public Sampler? occlusionTextureSampler;
         public int occlusionCoordsIndex = 0;
+        public Sampler? emissiveTextureSampler;
+        public int emissiveCoordsIndex = 0;
         public float metallic = 1f;
         public float roughness = 1f;
 
@@ -64,6 +67,12 @@ namespace GraphicsLib.Types
                 newMaterial.occlusionTextureSampler = material.OcclusionTexture.GetConvertedSampler();
                 newMaterial.occlusionCoordsIndex = material.OcclusionTexture.TexCoord;
             }
+            newMaterial.emissiveFactor = material.EmissiveFactor;
+            if (material.EmissiveTexture != null)
+            {
+                newMaterial.emissiveTextureSampler = material.EmissiveTexture.GetConvertedSampler();
+                newMaterial.emissiveCoordsIndex = material.EmissiveTexture.TexCoord;
+            }            
             return newMaterial;
         }
     }
