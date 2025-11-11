@@ -25,7 +25,7 @@ namespace Lab1
         private LightEditorViewModel ViewModel => (LightEditorViewModel)DataContext;
 
         private readonly OpenFileDialog ofd;
-
+        private readonly OpenFileDialog bloomKernelDialog;
         private static readonly Camera camera = new Camera();
         private Point oldPos;
         private WriteableBitmap? bitmap;
@@ -45,6 +45,15 @@ namespace Lab1
                 Filter = "GLTF files(*.gltf)|*.gltf|OBJ files (*.obj)|*.obj|All files (*.*)|*.*"
             };
             ofd.FileOk += OnFileOpened;
+            bloomKernelDialog = new OpenFileDialog
+            {
+                CheckFileExists = true,
+                CheckPathExists = true,
+                Multiselect = false,
+                ValidateNames = true,
+                Filter = "PNG files (*.png)|*.png|All files (*.*)|*.*"
+            };
+            bloomKernelDialog.FileOk += OnBloomKernelFileOpened;
             Height = SystemParameters.PrimaryScreenHeight / 1.25;
             Width = SystemParameters.PrimaryScreenWidth / 1.25;
             modelRenderer = new ModelRenderer();
@@ -149,6 +158,20 @@ namespace Lab1
                     ((int)canvas.ActualWidth), ((int)canvas.ActualHeight), 96, 96, PixelFormats.Bgra32, null);
             ForcedDraw();
         }
+        private void OnBloomKernelFileOpened(object? sender, CancelEventArgs e)
+        {
+            try
+            {
+                modelRenderer.BloomProcessor?.LoadKernelFromImage(bloomKernelDialog.FileName);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
+            ForcedDraw();
+        }
+
+
         private void OpenPopupButton_Click(object sender, RoutedEventArgs e)
         {
             ViewModel.IsPopupOpen = true;
@@ -160,6 +183,7 @@ namespace Lab1
                 return;
             }
             camera.UpdateViewPort(bitmap.PixelWidth, bitmap.PixelHeight);
+            modelRenderer.BloomEnabled = EnableBloomCheckBox.IsChecked ?? false;
             ModelRenderer.TimeElapsed = secondsElapsed;
             switch (renderMode)
             {
@@ -200,7 +224,10 @@ namespace Lab1
         {
             ofd.ShowDialog();
         }
-
+        private void ButtonOpenBloomKernel_Click(object sender, RoutedEventArgs e)
+        {
+            bloomKernelDialog.ShowDialog();
+        }
         private void Window_MouseDown(object sender, MouseButtonEventArgs e)
         {
             Mouse.Capture(canvas);

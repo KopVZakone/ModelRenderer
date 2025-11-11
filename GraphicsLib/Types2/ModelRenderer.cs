@@ -14,6 +14,8 @@ namespace GraphicsLib.Types2
     public class ModelRenderer
     {
         public ZBufferV3? Zbuffer { get; set; }
+        public BloomProcessor? BloomProcessor { get; set; }
+        public bool BloomEnabled { get; set; } = false;
         private static readonly Queue<(Matrix4x4 Transform, ModelSkin? Skin, ModelPrimitive Primitive)> nonOpaqueQueue = [];
         private static readonly Queue<(Matrix4x4 Transform, ModelSkin? Skin, ModelPrimitive Primitive)> opaqueQueue = [];
 
@@ -170,6 +172,11 @@ namespace GraphicsLib.Types2
                 Zbuffer.ChangeDefaultColor(new Vector4(0, 0.5f, 0.7f, 1f));
             }
             Zbuffer.ResizeAndClear((int)scene.Camera.ScreenWidth, (int)scene.Camera.ScreenHeight);
+            if(BloomProcessor == null)
+            {
+                BloomProcessor = new BloomProcessor((int)scene.Camera.ScreenWidth, (int)scene.Camera.ScreenHeight);
+                BloomProcessor.PrepareGaussianKernel(10f);
+            }
             if (scene.Skins != null)
             {
                 foreach (var skin in scene.Skins)
@@ -178,6 +185,11 @@ namespace GraphicsLib.Types2
                 }
             }
             RenderScene<Shader, Vertex, Shader, Vertex>(scene, Zbuffer, true);
+            if (BloomEnabled)
+            {
+                BloomProcessor.Process(Zbuffer, 3);
+            }
+
             bitmap.FlushZBufferV3(Zbuffer);
         }
         private static void CalculateBindingMatrices(in ModelNode node, ModelSkin skin, in Matrix4x4 parentTransform)
