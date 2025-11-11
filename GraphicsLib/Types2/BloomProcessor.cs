@@ -109,7 +109,7 @@ namespace GraphicsLib.Types2
 
             //Array.Copy(kernelSpatial, kernelSpec, padArea);
         }
-        public void LoadKernelFromImage(string path, bool normalize = false)
+        public void LoadKernelFromImage(string path, bool normalize = true)
         {
             using var img = Image.Load<Rgba32>(path);
             
@@ -149,15 +149,23 @@ namespace GraphicsLib.Types2
 
             Complex32[] padded = new Complex32[padArea];
 
-            // Вставляем ядро в центр padded массива
-            int offsetX = padW / 2 - kw / 2;
-            int offsetY = padH / 2 - kh / 2;
+            // Центр ядра
+            int cx = kw / 2;
+            int cy = kh / 2;
 
+            // --- копируем четыре четверти, как unwrap fftshift ---
             for (int y = 0; y < kh; y++)
             {
-                int dstRow = (offsetY + y) * padW + offsetX;
+                int dy = (y < cy) ? (y + padH - cy) : (y - cy);
+                if (dy < 0 || dy >= padH) continue;
+
                 for (int x = 0; x < kw; x++)
-                    padded[dstRow + x] = new Complex32(kernel[y, x], 0f);
+                {
+                    int dx = (x < cx) ? (x + padW - cx) : (x - cx);
+                    if (dx < 0 || dx >= padW) continue;
+
+                    padded[dy * padW + dx] = new Complex32(kernel[y, x], 0f);
+                }
             }
 
             // FFT ядра (теперь в частотную область)
