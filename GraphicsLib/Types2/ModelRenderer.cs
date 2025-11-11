@@ -72,6 +72,8 @@ namespace GraphicsLib.Types2
             where OpaqueShader : IModelShader<OpaqueVertex>, new() where OpaqueVertex : struct, IModelVertex<OpaqueVertex>
             where NonOpaqueShader : IModelShader<NonOpaqueVertex>, new() where NonOpaqueVertex : struct, IModelVertex<NonOpaqueVertex>
         {
+            if (scene.RootModelNodes is null)
+                return;
             var opaquePipeline = GetPipeline<OpaqueShader, OpaqueVertex>();
             opaquePipeline.BindScene(scene);
             opaquePipeline.BindZBuffer(zBuffer);
@@ -241,7 +243,7 @@ namespace GraphicsLib.Types2
 
                 foreach (var primitive in primitives)
                 {
-                    if (primitive.Material?.alphaMode == Types.GltfTypes.GltfMaterialAlphaMode.OPAQUE)
+                    if (primitive.Material?.AlphaMode == Types.GltfTypes.GltfMaterialAlphaMode.OPAQUE)
                     {
                         opaqueQueue.Enqueue((currentTransformation, node.AppliedSkin, primitive));
                     }
@@ -719,7 +721,7 @@ namespace GraphicsLib.Types2
                             //    color.Z = MathF.Pow((color.Z + 0.055f) / 1.055f, 2.4f);
                             //}
                             //color *= 0xFF;
-                            if (currentPrimitive!.Material?.alphaMode == Types.GltfTypes.GltfMaterialAlphaMode.BLEND)
+                            if (currentPrimitive!.Material?.AlphaMode == Types.GltfTypes.GltfMaterialAlphaMode.BLEND)
                             {
                                 if (color.W <= 0)
                                 {

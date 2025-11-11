@@ -132,30 +132,30 @@ namespace GraphicsLib.Shaders
             
             //calculate normal
             Vector3 normal = Vector3.Normalize(input.Normal);
-            if (material.normalTextureSampler != null)
+            if (material.NormalTextureSampler != null)
             {
                 float sign = input.Tangent.W;
                 Vector3 tangent = input.Tangent.AsVector3();
-                Vector3 tangentSpaceNormal = material.normalTextureSampler.Sample(input.NormalUv).AsVector3();
+                Vector3 tangentSpaceNormal = material.NormalTextureSampler.Sample(input.NormalUv).AsVector3();
                 //decode
                 tangentSpaceNormal = tangentSpaceNormal * 2 - new Vector3(1, 1, 1);
                 Vector3 bitangent = sign * Vector3.Cross(normal, tangent);
                 normal = Vector3.Normalize(tangent * tangentSpaceNormal.X + bitangent * tangentSpaceNormal.Y + normal * tangentSpaceNormal.Z);
             }
-            float roughness = material.roughness;
-            float metallic = material.metallic;
-            if (material.metallicRoughnessTextureSampler != null)
+            float roughness = material.Roughness;
+            float metallic = material.Metallic;
+            if (material.MetallicRoughnessTextureSampler != null)
             {
-                Vector4 metallicRoughness = material.metallicRoughnessTextureSampler.Sample(input.RoughnessUv);
+                Vector4 metallicRoughness = material.MetallicRoughnessTextureSampler.Sample(input.RoughnessUv);
                 roughness *= metallicRoughness.Y;
                 metallic *= metallicRoughness.Z;
             }
             //calculate diffuse color based on base color texture
-            Vector4 diffuseColor = material.baseColor;
-            if (material.baseColorTextureSampler != null)
+            Vector4 diffuseColor = material.BaseColor;
+            if (material.BaseColorTextureSampler != null)
             {
                 Vector2 uv = input.Uv;
-                diffuseColor *= material.baseColorTextureSampler.Sample(uv);
+                diffuseColor *= material.BaseColorTextureSampler.Sample(uv);
             }
             //ambient component
             Vector3 ambient = ambientLightColor * diffuseColor.AsVector3();

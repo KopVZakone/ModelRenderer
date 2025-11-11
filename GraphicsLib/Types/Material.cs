@@ -1,4 +1,5 @@
 ﻿using GraphicsLib.Types.GltfTypes;
+using GraphicsLib.Types2.Shaders;
 using System.Numerics;
 
 namespace GraphicsLib.Types
@@ -6,74 +7,90 @@ namespace GraphicsLib.Types
     public class Material
     {
         public static readonly Material defaultMaterial = new();
+        public string Name { get; set; }
+        public GltfMaterialAlphaMode AlphaMode { get; set; } = GltfMaterialAlphaMode.OPAQUE;
+        public Vector4 BaseColor { get; set; } = new(1, 1, 1, 1);
+        public Vector3 EmissiveFactor { get; set; } = new(0, 0, 0);
+        public Sampler? BaseColorTextureSampler { get; set; }
+        public int BaseColorCoordsIndex { get; set; }
+        public Sampler? NormalTextureSampler { get; set; }
+        public int NormalCoordsIndex { get; set; }
+        public Sampler? MetallicRoughnessTextureSampler { get; set; }
+        public int MetallicRoughnessCoordsIndex { get; set; }
+        public Sampler? OcclusionTextureSampler { get; set; }
+        public int OcclusionCoordsIndex { get; set; }
+        public Sampler? EmissiveTextureSampler { get; set; }
+        public int EmissiveCoordsIndex { get; set; }
+        public float Metallic { get; set; } = 1f;
+        public float Roughness { get; set; } = 1f;
 
-
-        public string name;
-        public GltfMaterialAlphaMode alphaMode = GltfMaterialAlphaMode.OPAQUE;
-
-        //also known as albedo
-        public Vector4 baseColor = new(1, 1, 1, 1);
-        public Vector3 emissiveFactor = new(0, 0, 0);
-        public Sampler? baseColorTextureSampler;
-        public int baseColorCoordsIndex = 0;
-        public Sampler? normalTextureSampler;
-        public int normalCoordsIndex = 0;
-        public Sampler? metallicRoughnessTextureSampler;
-        public int metallicRoughnessCoordsIndex = 0;
-        public Sampler? occlusionTextureSampler;
-        public int occlusionCoordsIndex = 0;
-        public Sampler? emissiveTextureSampler;
-        public int emissiveCoordsIndex = 0;
-        public float metallic = 1f;
-        public float roughness = 1f;
 
         public Material()
         {
-            name = string.Empty;
+            Name = string.Empty;
         }
         public static Material FromGltfMaterial(GltfMaterial material)
         {
             Material newMaterial = new();
             if (material.Name != null)
-                newMaterial.name = material.Name;
-            newMaterial.alphaMode = material.AlphaMode;
+                newMaterial.Name = material.Name;
+            newMaterial.AlphaMode = material.AlphaMode;
             if (material.PbrMetallicRoughness != null)
             {
                 var pbr = material.PbrMetallicRoughness;
-                newMaterial.metallic = pbr.MetallicFactor;
-                newMaterial.roughness = pbr.RoughnessFactor;
-                newMaterial.baseColor = pbr.BaseColorFactor;
+                newMaterial.Metallic = pbr.MetallicFactor;
+                newMaterial.Roughness = pbr.RoughnessFactor;
+                newMaterial.BaseColor = pbr.BaseColorFactor;
                 //add samplers if they are present
 
                 if(pbr.BaseColorTexture != null)
                 {
-                    newMaterial.baseColorTextureSampler = pbr.BaseColorTexture.GetConvertedSampler();
-                    newMaterial.baseColorCoordsIndex = pbr.BaseColorTexture.TexCoord;
+                    newMaterial.BaseColorTextureSampler = pbr.BaseColorTexture.GetConvertedSampler();
+                    newMaterial.BaseColorCoordsIndex = pbr.BaseColorTexture.TexCoord;
                 }
                 if(pbr.MetallicRoughnessTexture != null)
                 {
-                    newMaterial.metallicRoughnessTextureSampler = pbr.MetallicRoughnessTexture.GetConvertedSampler();
-                    newMaterial.metallicRoughnessCoordsIndex = pbr.MetallicRoughnessTexture.TexCoord;
+                    newMaterial.MetallicRoughnessTextureSampler = pbr.MetallicRoughnessTexture.GetConvertedSampler();
+                    newMaterial.MetallicRoughnessCoordsIndex = pbr.MetallicRoughnessTexture.TexCoord;
                 }
             }
             //add samplers if they are present
             if(material.NormalTexture != null)
             {
-                newMaterial.normalTextureSampler = material.NormalTexture.GetConvertedSampler();
-                newMaterial.normalCoordsIndex = material.NormalTexture.TexCoord;
+                newMaterial.NormalTextureSampler = material.NormalTexture.GetConvertedSampler();
+                newMaterial.NormalCoordsIndex = material.NormalTexture.TexCoord;
             }
             if(material.OcclusionTexture != null)
             {
-                newMaterial.occlusionTextureSampler = material.OcclusionTexture.GetConvertedSampler();
-                newMaterial.occlusionCoordsIndex = material.OcclusionTexture.TexCoord;
+                newMaterial.OcclusionTextureSampler = material.OcclusionTexture.GetConvertedSampler();
+                newMaterial.OcclusionCoordsIndex = material.OcclusionTexture.TexCoord;
             }
-            newMaterial.emissiveFactor = material.EmissiveFactor;
+            newMaterial.EmissiveFactor = material.EmissiveFactor;
             if (material.EmissiveTexture != null)
             {
-                newMaterial.emissiveTextureSampler = material.EmissiveTexture.GetConvertedSampler();
-                newMaterial.emissiveCoordsIndex = material.EmissiveTexture.TexCoord;
+                newMaterial.EmissiveTextureSampler = material.EmissiveTexture.GetConvertedSampler();
+                newMaterial.EmissiveCoordsIndex = material.EmissiveTexture.TexCoord;
             }            
             return newMaterial;
+        }
+
+        public ShaderFeatures GetShaderFeatures()
+        {
+            ShaderFeatures f = ShaderFeatures.BaseColor;
+            if (NormalTextureSampler != null) f |= ShaderFeatures.NormalMap;
+            if (MetallicRoughnessTextureSampler != null) f |= ShaderFeatures.MetallicRoughness;
+            if (EmissiveTextureSampler != null) f |= ShaderFeatures.Emissive;
+            return f;
+        }
+        public HashSet<int> GetUsedUvs()
+        {
+            var set = new HashSet<int>();
+            if (BaseColorTextureSampler != null) set.Add(BaseColorCoordsIndex);
+            if (NormalTextureSampler != null) set.Add(NormalCoordsIndex);
+            if (MetallicRoughnessTextureSampler != null) set.Add(MetallicRoughnessCoordsIndex);
+            if (OcclusionTextureSampler != null) set.Add(OcclusionCoordsIndex);
+            if (EmissiveTextureSampler != null) set.Add(EmissiveCoordsIndex);
+            return set;
         }
     }
 }

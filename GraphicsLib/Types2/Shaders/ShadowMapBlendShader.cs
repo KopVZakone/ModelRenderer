@@ -46,7 +46,7 @@ namespace GraphicsLib.Types2.Shaders
             unsafe
             {
                 positionsArray = ModelShaderUtils.GetAttributePointer<Vector3>(primitive, "POSITION");
-                uvArray = ModelShaderUtils.GetAttributePointer<Vector2>(primitive, $"TEXCOORD_{currentMaterial!.baseColorCoordsIndex}");
+                uvArray = ModelShaderUtils.GetAttributePointer<Vector2>(primitive, $"TEXCOORD_{currentMaterial!.BaseColorCoordsIndex}");
                 jointsArray = ModelShaderUtils.GetJointsPointer(primitive);
                 weightsArray = ModelShaderUtils.GetAttributePointer<float>(primitive, "WEIGHTS_0");
             }
@@ -60,10 +60,10 @@ namespace GraphicsLib.Types2.Shaders
         }
         public static Vector4 PixelShader(in ShadowMapBlendVertex input)
         {
-            Vector4 diffuseColor = currentMaterial!.baseColor;
-            if (currentMaterial!.baseColorTextureSampler != null)
+            Vector4 diffuseColor = currentMaterial!.BaseColor;
+            if (currentMaterial!.BaseColorTextureSampler != null)
             {
-                diffuseColor *= currentMaterial!.baseColorTextureSampler.Sample(input.Uv);
+                diffuseColor *= currentMaterial!.BaseColorTextureSampler.Sample(input.Uv);
             }
             if (diffuseColor.W < 0.0001f)
             {

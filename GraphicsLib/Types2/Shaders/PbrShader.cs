@@ -46,6 +46,9 @@ namespace GraphicsLib.Types2.Shaders
         public static void UnbindScene()
         {
             lightSources = null;
+            ambientLightColor = default;
+            ambientLightColor = default;
+            cameraPosition = default;
         }
         public static void BindSkin(in ModelSkin skin)
         {
@@ -66,6 +69,8 @@ namespace GraphicsLib.Types2.Shaders
         public static void UnbindPrimitive()
         {
             UnbindAttributes();
+            normalTransformation = default;
+            worldTransformation = default;
             currentMaterial = null;      
         }
         private static void BindAttributes(in ModelPrimitive primitive)
@@ -74,13 +79,13 @@ namespace GraphicsLib.Types2.Shaders
             {
                 positionsArray = ModelShaderUtils.GetAttributePointer<Vector3>(primitive, "POSITION");
                 normalsArray = ModelShaderUtils.GetAttributePointer<Vector3>(primitive, "NORMAL");
-                uvsArray = ModelShaderUtils.GetAttributePointer<Vector2>(primitive, $"TEXCOORD_{currentMaterial!.baseColorCoordsIndex}");
+                uvsArray = ModelShaderUtils.GetAttributePointer<Vector2>(primitive, $"TEXCOORD_{currentMaterial!.BaseColorCoordsIndex}");
                 tangentsArray = ModelShaderUtils.GetAttributePointer<Vector4>(primitive, "TANGENT");
-                normalUvsArray = ModelShaderUtils.GetAttributePointer<Vector2>(primitive, $"TEXCOORD_{currentMaterial!.normalCoordsIndex}");
-                roughnessMetallicUvsArray = ModelShaderUtils.GetAttributePointer<Vector2>(primitive, $"TEXCOORD_{currentMaterial!.metallicRoughnessCoordsIndex}");
+                normalUvsArray = ModelShaderUtils.GetAttributePointer<Vector2>(primitive, $"TEXCOORD_{currentMaterial!.NormalCoordsIndex}");
+                roughnessMetallicUvsArray = ModelShaderUtils.GetAttributePointer<Vector2>(primitive, $"TEXCOORD_{currentMaterial!.MetallicRoughnessCoordsIndex}");
                 jointsArray = ModelShaderUtils.GetJointsPointer(primitive);
                 weightsArray = ModelShaderUtils.GetAttributePointer<float>(primitive, "WEIGHTS_0");
-                emissiveUvsArray = ModelShaderUtils.GetAttributePointer<Vector2>(primitive, $"TEXCOORD_{currentMaterial!.emissiveCoordsIndex}");
+                emissiveUvsArray = ModelShaderUtils.GetAttributePointer<Vector2>(primitive, $"TEXCOORD_{currentMaterial!.EmissiveCoordsIndex}");
             }
         }
         private static void UnbindAttributes()
@@ -98,10 +103,10 @@ namespace GraphicsLib.Types2.Shaders
 
         public static Vector4 PixelShader(in PbrVertex input)
         {
-            Vector4 diffuseColor = currentMaterial!.baseColor;
-            if (currentMaterial!.baseColorTextureSampler != null)
+            Vector4 diffuseColor = currentMaterial!.BaseColor;
+            if (currentMaterial!.BaseColorTextureSampler != null)
             {
-                diffuseColor *= currentMaterial!.baseColorTextureSampler.Sample(input.Uv);
+                diffuseColor *= currentMaterial!.BaseColorTextureSampler.Sample(input.Uv);
             }
             //transparent pixel
             if(diffuseColor.W < 0.0001f)
@@ -109,11 +114,11 @@ namespace GraphicsLib.Types2.Shaders
                 return new Vector4(0);
             }
             Vector3 normal = Vector3.Normalize(input.Normal);
-            if (currentMaterial.normalTextureSampler != null)
+            if (currentMaterial.NormalTextureSampler != null)
             {
                 float sign = input.Tangent.W;
                 Vector3 tangent = input.Tangent.AsVector3();
-                Vector3 tangentSpaceNormal = currentMaterial.normalTextureSampler.Sample(input.NormalUv).AsVector3();
+                Vector3 tangentSpaceNormal = currentMaterial.NormalTextureSampler.Sample(input.NormalUv).AsVector3();
                 //decode
                 tangentSpaceNormal = tangentSpaceNormal * 2 - new Vector3(1, 1, 1);
                 Vector3 bitangent = sign * Vector3.Cross(normal, tangent);
@@ -121,11 +126,11 @@ namespace GraphicsLib.Types2.Shaders
             }
             
             //calculate roughness and metallic
-            float roughness = currentMaterial.roughness;
-            float metallic = currentMaterial.metallic;
-            if (currentMaterial.metallicRoughnessTextureSampler != null)
+            float roughness = currentMaterial.Roughness;
+            float metallic = currentMaterial.Metallic;
+            if (currentMaterial.MetallicRoughnessTextureSampler != null)
             {
-                Vector4 metallicRoughness = currentMaterial.metallicRoughnessTextureSampler.Sample(input.RoughnessMetallicUv);
+                Vector4 metallicRoughness = currentMaterial.MetallicRoughnessTextureSampler.Sample(input.RoughnessMetallicUv);
                 roughness *= metallicRoughness.Y;
                 metallic *= metallicRoughness.Z;
             }
@@ -168,9 +173,9 @@ namespace GraphicsLib.Types2.Shaders
                 }
             }
             finalColor = Vector3.Clamp(finalColor, Vector3.Zero, new Vector3(1));
-            if (currentMaterial.emissiveTextureSampler != null)
+            if (currentMaterial.EmissiveTextureSampler != null)
             {
-                finalColor += currentMaterial.emissiveTextureSampler.Sample(input.EmissiveUv).AsVector3() * currentMaterial.emissiveFactor;
+                finalColor += currentMaterial.EmissiveTextureSampler.Sample(input.EmissiveUv).AsVector3() * currentMaterial.EmissiveFactor;
             }
             return new Vector4(finalColor, diffuseColor.W);
         }

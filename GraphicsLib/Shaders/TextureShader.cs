@@ -70,10 +70,10 @@ namespace GraphicsLib.Shaders
         {
             Vector2 uv = input.Uv;
             Material material = input.Material;
-            Vector4 finalARGBColor = material.baseColor;
-            if (material.baseColorTextureSampler != null)
+            Vector4 finalARGBColor = material.BaseColor;
+            if (material.BaseColorTextureSampler != null)
             {
-                Vector4 textureColor = material.baseColorTextureSampler.Sample(uv);               
+                Vector4 textureColor = material.BaseColorTextureSampler.Sample(uv);               
                 finalARGBColor *= textureColor;
             }
             uint color = (uint)(finalARGBColor.W * 0xFF) << 24

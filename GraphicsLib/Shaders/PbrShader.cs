@@ -51,11 +51,11 @@ namespace GraphicsLib.Shaders
 
             //calculate normal
             Vector3 normal = Vector3.Normalize(input.normal);
-            if (material.normalTextureSampler != null)
+            if (material.NormalTextureSampler != null)
             {
                 float sign = input.tangent.W;
                 Vector3 tangent = input.tangent.AsVector3();
-                Vector3 tangentSpaceNormal = material.normalTextureSampler.Sample(input.normalUv).AsVector3();
+                Vector3 tangentSpaceNormal = material.NormalTextureSampler.Sample(input.normalUv).AsVector3();
                 //decode
                 tangentSpaceNormal = tangentSpaceNormal * 2 - new Vector3(1, 1, 1);
                 Vector3 bitangent = sign * Vector3.Cross(normal, tangent);
@@ -66,19 +66,19 @@ namespace GraphicsLib.Shaders
             Vector3 lightDir = Vector3.Normalize(lightPosition - input.worldPosition);
             Vector3 halfWayDir = Vector3.Normalize(lightDir + viewDir);
             //calculate roughness and metallic
-            float roughness = material.roughness;
-            float metallic = material.metallic;
-            if (material.metallicRoughnessTextureSampler != null)
+            float roughness = material.Roughness;
+            float metallic = material.Metallic;
+            if (material.MetallicRoughnessTextureSampler != null)
             {
-                Vector4 metallicRoughness  = material.metallicRoughnessTextureSampler.Sample(input.roughnessUv);
+                Vector4 metallicRoughness  = material.MetallicRoughnessTextureSampler.Sample(input.roughnessUv);
                 roughness *= metallicRoughness.Y;
                 metallic *= metallicRoughness.Z;
             }
             //Calculate base color
-            Vector4 diffuseColor = material.baseColor;
-            if (material.baseColorTextureSampler != null)
+            Vector4 diffuseColor = material.BaseColor;
+            if (material.BaseColorTextureSampler != null)
             {
-                diffuseColor *= material.baseColorTextureSampler.Sample(input.uv);
+                diffuseColor *= material.BaseColorTextureSampler.Sample(input.uv);
             }
             float nDotL = Math.Max(Vector3.Dot(normal, lightDir), 0);
             if (nDotL <= 0)
