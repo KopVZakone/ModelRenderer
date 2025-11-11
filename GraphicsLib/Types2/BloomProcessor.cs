@@ -181,41 +181,39 @@ namespace GraphicsLib.Types2
             // 1. Pack R+iG and B+iA into spectrum
             Array.Clear(spectrumRB, 0, padArea);
             Array.Clear(spectrumBA, 0, padArea);
-            for (int y = 0; y < h; y++)
+            Parallel.For(0, h, y =>
             {
                 int rowSrc = y * w;
                 int rowDst = y * padW;
                 for (int x = 0; x < w; x++)
                 {
                     var c = zbuf.At(rowSrc + x).color;
-
-                    // Вычисляем яркость пикселя
                     var r = c.X > threshold ? c.X : 0f;
                     var g = c.Y > threshold ? c.Y : 0f;
                     var b = c.Z > threshold ? c.Z : 0f;
-                    var a = c.W;    
+                    var a = c.W;
                     spectrumRB[rowDst + x] = new Complex32(r, g);
                     spectrumBA[rowDst + x] = new Complex32(b, a);
                 }
-            }
+            });
 
             // 2. Forward horizontal FFT
             // 3. Forward vertical FFT
             Forward2DFFT(spectrumRB, 0, padW, padH);
             Forward2DFFT(spectrumBA, 0, padW, padH);
             //// 4. Multiply by kernel
-            for (int i = 0; i < padArea; i++)
+            Parallel.For(0, padArea, i =>
             {
                 spectrumRB[i] *= kernelSpec[i];
                 spectrumBA[i] *= kernelSpec[i];
-            }
+            });
 
             // 5. Inverse vertical FFT
             // 6. Inverse horizontal FFT
             Inverse2DFFT(spectrumRB, 0, padW, padH);
             Inverse2DFFT(spectrumBA, 0, padW, padH);
             // 7. Unpack and blend
-            for (int y = 0; y < h; y++)
+            Parallel.For(0, h, y =>
             {
                 int row = y * w;
                 int rowPad = y * padW;
@@ -228,34 +226,24 @@ namespace GraphicsLib.Types2
                     float addR = c0.Real * intensity;
                     float addG = c0.Imaginary * intensity;
                     float addB = c1.Real * intensity;
+
                     var src = zbuf.At(row + x).color;
                     var hdrColor = src.AsVector3() + new Vector3(addR, addG, addB);
+
                     zbuf[x, y] = new VectorPixelData(
                         zbuf.At(row + x).depth,
-                        new Vector4(
-                            hdrColor.X,
-                            hdrColor.Y,
-                            hdrColor.Z,
-                            src.W
-                        )
+                        new Vector4(hdrColor.X, hdrColor.Y, hdrColor.Z, src.W)
                     );
-                    // zbuf[x, y] = new VectorPixelData(
-                    //    zbuf.At(row + x).depth,
-                    //    new Vector4(
-                    //        addR,
-                    //        addG,
-                    //        addB,
-                    //        src.W
-                    //    )
-                    //); 
                 }
-            }
+            });
         }
         private void Forward2DFFT(Complex32[] buffer, int offset, int width, int height)
         {
             // Горизонтальные
-            for (int y = 0; y < height; y++)
+            Parallel.For(0, height, y =>
+            {
                 FFT1D(buffer, offset + y * width, width, true);
+            });
 
             // Вертикальные
             for (int x = 0; x < width; x++)
@@ -299,8 +287,10 @@ namespace GraphicsLib.Types2
             }
 
             // Горизонтальные
-            for (int y = 0; y < height; y++)
+            Parallel.For(0, height, y =>
+            {
                 FFT1D(buffer, offset + y * width, width, false);
+            });
 
             // Глобальное масштабирование
             float scale = 1f / (width * height);
