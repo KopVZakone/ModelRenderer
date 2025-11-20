@@ -21,6 +21,7 @@ namespace GraphicsLib.Types2
 
         private static readonly ConcurrentDictionary<(Type, Type), object> pipelineCache = [];
         public static float TimeElapsed { get; set; } = 0;
+        private static readonly Vector4 DefaultColor = new Vector4(0, 0.2f, 0.2f, 0.4f);
 
         public static void FillShadowMaps(ModelScene scene)
         {
@@ -147,7 +148,7 @@ namespace GraphicsLib.Types2
             {
                 Zbuffer = new((int)scene.Camera.ScreenWidth, (int)scene.Camera.ScreenHeight);
                 //0xFF0080AA
-                Zbuffer.ChangeDefaultColor(new Vector4(0, 0.5f, 0.7f, 1f));
+                Zbuffer.ChangeDefaultColor(DefaultColor);
             }
             Zbuffer.ResizeAndClear((int)scene.Camera.ScreenWidth, (int)scene.Camera.ScreenHeight);
             if (scene.Skins != null)
@@ -169,7 +170,7 @@ namespace GraphicsLib.Types2
             {
                 Zbuffer = new((int)scene.Camera.ScreenWidth, (int)scene.Camera.ScreenHeight);
                 //0xFF0080AA
-                Zbuffer.ChangeDefaultColor(new Vector4(0, 0.5f, 0.7f, 1f));
+                Zbuffer.ChangeDefaultColor(DefaultColor);
             }
             Zbuffer.ResizeAndClear((int)scene.Camera.ScreenWidth, (int)scene.Camera.ScreenHeight);
             if(BloomProcessor == null)
@@ -187,7 +188,7 @@ namespace GraphicsLib.Types2
             RenderScene<Shader, Vertex, Shader, Vertex>(scene, Zbuffer, true);
             if (BloomEnabled)
             {
-                BloomProcessor.Process(Zbuffer, 3);
+                BloomProcessor.Process(Zbuffer, 2);
             }
 
             bitmap.FlushZBufferV3(Zbuffer);
@@ -707,32 +708,6 @@ namespace GraphicsLib.Types2
                             Vertex correctedPoint = lineInterpolant * (1 / lineInterpolant.Position.W);
 
                             Vector4 color = Shader.PixelShader(correctedPoint);
-                            ////gamma correction
-                            //if (color.X < 0.04045f)
-                            //{
-                            //    color.X /= 12.92f;
-                            //}
-                            //else
-                            //{
-                            //    color.X = MathF.Pow((color.X + 0.055f) / 1.055f, 2.4f);
-                            //}
-                            //if (color.Y < 0.04045f)
-                            //{
-                            //    color.Y /= 12.92f;
-                            //}
-                            //else
-                            //{
-                            //    color.Y = MathF.Pow((color.Y + 0.055f) / 1.055f, 2.4f);
-                            //}
-                            //if (color.Z < 0.04045f)
-                            //{
-                            //    color.Z /= 12.92f;
-                            //}
-                            //else
-                            //{
-                            //    color.Z = MathF.Pow((color.Z + 0.055f) / 1.055f, 2.4f);
-                            //}
-                            //color *= 0xFF;
                             if (currentPrimitive!.Material?.AlphaMode == Types.GltfTypes.GltfMaterialAlphaMode.BLEND)
                             {
                                 if (color.W <= 0)

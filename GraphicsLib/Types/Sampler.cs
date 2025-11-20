@@ -168,8 +168,8 @@ namespace GraphicsLib.Types
         
         private Vector4 Sample1024x1024(Vector2 uv)
         {
-            int width1024 = 1024;
-            int height1024 = 1024;
+            const int width1024 = 1024;
+            const int height1024 = 1024;
             switch (magnificationFilterMode)
             {
                 case MagnificationFilterMode.Nearest:
@@ -214,8 +214,8 @@ namespace GraphicsLib.Types
         }
         private Vector4 Sample2048x2048(Vector2 uv)
         {
-            int width2048 = 2048;
-            int height2048 = 2048;
+            const int width2048 = 2048;
+            const int height2048 = 2048;
             switch (magnificationFilterMode)
             {
                 case MagnificationFilterMode.Nearest:
@@ -260,8 +260,8 @@ namespace GraphicsLib.Types
         }
         private Vector4 Sample4096x4096(Vector2 uv)
         {
-            int width4096 = 4096;
-            int height4096 = 4096;
+            const int width4096 = 4096;
+            const int height4096 = 4096;
             switch (magnificationFilterMode)
             {
                 case MagnificationFilterMode.Nearest:

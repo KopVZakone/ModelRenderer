@@ -9,10 +9,11 @@ namespace GraphicsLib.Types2.Shaders
     [Flags]
     public enum ShaderFeatures
     {
-        BaseColor = 1 << 0,
+        BaseColorTexture = 1 << 0,
         NormalMap = 1 << 1,
-        MetallicRoughness = 1 << 2,
-        Emissive = 1 << 3,
-        Skinning = 1 << 4,
+        MetallicRoughnessTexture = 1 << 2,
+        EmissiveTexture = 1 << 3,
+        OcclusionTexture = 1 << 4,
+        BlendModeAlpha = 1 << 4,
     }
 }

@@ -76,10 +76,10 @@ namespace GraphicsLib.Types
 
         public ShaderFeatures GetShaderFeatures()
         {
-            ShaderFeatures f = ShaderFeatures.BaseColor;
+            ShaderFeatures f = ShaderFeatures.BaseColorTexture;
             if (NormalTextureSampler != null) f |= ShaderFeatures.NormalMap;
-            if (MetallicRoughnessTextureSampler != null) f |= ShaderFeatures.MetallicRoughness;
-            if (EmissiveTextureSampler != null) f |= ShaderFeatures.Emissive;
+            if (MetallicRoughnessTextureSampler != null) f |= ShaderFeatures.MetallicRoughnessTexture;
+            if (EmissiveTextureSampler != null) f |= ShaderFeatures.EmissiveTexture;
             return f;
         }
         public HashSet<int> GetUsedUvs()

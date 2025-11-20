@@ -40,7 +40,7 @@ namespace GraphicsLib.Types2.Shaders
         {
             cameraPosition = scene.Camera!.Position;
             ambientLightColor = new Vector3(1f);
-            ambientLightIntensity = 0.5f;
+            ambientLightIntensity = 0.1f;
             lightSources = scene.LightSources;
         }
         public static void UnbindScene()
@@ -117,6 +117,7 @@ namespace GraphicsLib.Types2.Shaders
             if (currentMaterial.NormalTextureSampler != null)
             {
                 float sign = input.Tangent.W;
+                Matrix4x4 matrix4X4 = new Matrix4x4();
                 Vector3 tangent = input.Tangent.AsVector3();
                 Vector3 tangentSpaceNormal = currentMaterial.NormalTextureSampler.Sample(input.NormalUv).AsVector3();
                 //decode
@@ -145,9 +146,7 @@ namespace GraphicsLib.Types2.Shaders
             float alphaSqr = alpha * alpha;
             float k = (alpha + 1) * (alpha + 1) * 0.125f;
             float gv = MathF.ReciprocalEstimate(Math.Max(nDotV * (1 - k) + k, 0.001f));
-            Vector3 ambient = Vector3.Clamp(diffuseColor.AsVector3() * ambientLightColor * ambientLightIntensity
-                            , Vector3.Zero
-                            , new Vector3(1));
+            Vector3 ambient = diffuseColor.AsVector3() * ambientLightColor * ambientLightIntensity;
             Vector3 finalColor = ambient;
             //calculate all lighting related vectors
             if (lightSources != null)
@@ -172,11 +171,12 @@ namespace GraphicsLib.Types2.Shaders
                     finalColor += bdfs * lightSource.Color * (nDotL * intensity);
                 }
             }
-            finalColor = Vector3.Clamp(finalColor, Vector3.Zero, new Vector3(1));
+            Vector3 emission = currentMaterial.EmissiveFactor;
             if (currentMaterial.EmissiveTextureSampler != null)
             {
-                finalColor += currentMaterial.EmissiveTextureSampler.Sample(input.EmissiveUv).AsVector3() * currentMaterial.EmissiveFactor;
+                emission *= currentMaterial.EmissiveTextureSampler.Sample(input.EmissiveUv).AsVector3();
             }
+            finalColor += emission;
             return new Vector4(finalColor, diffuseColor.W);
         }
         public static PbrVertex VertexShader(in ModelPrimitive primitive, in int vertexDataIndex)
