@@ -1,17 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Numerics;
+﻿using System.Numerics;
 using System.Runtime.CompilerServices;
-using System.Runtime.Intrinsics.X86;
 using System.Runtime.Intrinsics;
-using System.Text;
-using System.Threading.Tasks;
+using System.Runtime.Intrinsics.X86;
 using static GraphicsLib.Types2.Shaders.PbrShader;
-using GraphicsLib.Types;
-using System.Windows.Media.Media3D;
 using Material = GraphicsLib.Types.Material;
-using System.Drawing;
 
 namespace GraphicsLib.Types2.Shaders
 {
@@ -40,7 +32,7 @@ namespace GraphicsLib.Types2.Shaders
         {
             cameraPosition = scene.Camera!.Position;
             ambientLightColor = new Vector3(1f);
-            ambientLightIntensity = 0.1f;
+            ambientLightIntensity = 0.0001f;
             lightSources = scene.LightSources;
         }
         public static void UnbindScene()
@@ -117,7 +109,6 @@ namespace GraphicsLib.Types2.Shaders
             if (currentMaterial.NormalTextureSampler != null)
             {
                 float sign = input.Tangent.W;
-                Matrix4x4 matrix4X4 = new Matrix4x4();
                 Vector3 tangent = input.Tangent.AsVector3();
                 Vector3 tangentSpaceNormal = currentMaterial.NormalTextureSampler.Sample(input.NormalUv).AsVector3();
                 //decode
@@ -135,6 +126,7 @@ namespace GraphicsLib.Types2.Shaders
                 roughness *= metallicRoughness.Y;
                 metallic *= metallicRoughness.Z;
             }
+            Vector3 ambient = diffuseColor.AsVector3() * ambientLightColor * ambientLightIntensity;
             Vector3 baseReflectivity = Vector3.Lerp(new Vector3(1.0f), diffuseColor.AsVector3(), metallic);
             Vector3 viewDir = Vector3.Normalize(cameraPosition - input.WorldPosition);
             float nDotV = Math.Max(Vector3.Dot(normal, viewDir), 0);
@@ -146,7 +138,7 @@ namespace GraphicsLib.Types2.Shaders
             float alphaSqr = alpha * alpha;
             float k = (alpha + 1) * (alpha + 1) * 0.125f;
             float gv = MathF.ReciprocalEstimate(Math.Max(nDotV * (1 - k) + k, 0.001f));
-            Vector3 ambient = diffuseColor.AsVector3() * ambientLightColor * ambientLightIntensity;
+            
             Vector3 finalColor = ambient;
             //calculate all lighting related vectors
             if (lightSources != null)

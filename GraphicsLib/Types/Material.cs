@@ -73,24 +73,5 @@ namespace GraphicsLib.Types
             }            
             return newMaterial;
         }
-
-        public ShaderFeatures GetShaderFeatures()
-        {
-            ShaderFeatures f = ShaderFeatures.BaseColorTexture;
-            if (NormalTextureSampler != null) f |= ShaderFeatures.NormalMap;
-            if (MetallicRoughnessTextureSampler != null) f |= ShaderFeatures.MetallicRoughnessTexture;
-            if (EmissiveTextureSampler != null) f |= ShaderFeatures.EmissiveTexture;
-            return f;
-        }
-        public HashSet<int> GetUsedUvs()
-        {
-            var set = new HashSet<int>();
-            if (BaseColorTextureSampler != null) set.Add(BaseColorCoordsIndex);
-            if (NormalTextureSampler != null) set.Add(NormalCoordsIndex);
-            if (MetallicRoughnessTextureSampler != null) set.Add(MetallicRoughnessCoordsIndex);
-            if (OcclusionTextureSampler != null) set.Add(OcclusionCoordsIndex);
-            if (EmissiveTextureSampler != null) set.Add(EmissiveCoordsIndex);
-            return set;
-        }
     }
 }

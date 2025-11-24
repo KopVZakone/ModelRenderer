@@ -1,5 +1,4 @@
 ﻿using GraphicsLib.Primitives;
-using GraphicsLib.Types;
 using GraphicsLib.Types.GltfTypes;
 using GraphicsLib.Types.JsonConverters;
 using Newtonsoft.Json;
@@ -7,7 +6,7 @@ using System.Globalization;
 using System.IO;
 using System.Numerics;
 using System.Windows;
-namespace GraphicsLib
+namespace GraphicsLib.Types
 {
     public static class Parser
     {

@@ -1,6 +1,8 @@
 ﻿using GraphicsLib.Primitives;
 using GraphicsLib.Types;
 using GraphicsLib.Types2.Shaders;
+using GraphicsLib.Types3;
+using GraphicsLib.Types3.ShaderGenerators;
 using System.Buffers;
 using System.Collections.Concurrent;
 using System.Numerics;
@@ -22,6 +24,21 @@ namespace GraphicsLib.Types2
         private static readonly ConcurrentDictionary<(Type, Type), object> pipelineCache = [];
         public static float TimeElapsed { get; set; } = 0;
         private static readonly Vector4 DefaultColor = new Vector4(0, 0.2f, 0.2f, 0.4f);
+
+        public static void TestShaderGenerator(ModelNode node, ModelPrimitive primitive)
+        {
+            ShaderFeatures shaderFeatures = 0;
+            var config =  ShaderConfigurationFactory.Create(shaderFeatures, primitive.MaterialV2, node.AppliedSkin != null);
+            var shaderType = ShaderFactory.CreateShader(config);
+            ShaderBase shader = (ShaderBase)Activator.CreateInstance(shaderType);
+            shader.BindSkin(node.AppliedSkin);
+            shader.BindPrimitive(ref primitive, Matrix4x4.Identity);
+            Span<float> testVertex = stackalloc float[config.InterpolatedDataSize];
+            shader.VertexShader(0, testVertex);
+            shader.UnbindPrimitive();
+            shader.UnbindSkin();
+        }
+
 
         public static void FillShadowMaps(ModelScene scene)
         {
@@ -77,6 +94,7 @@ namespace GraphicsLib.Types2
         {
             if (scene.RootModelNodes is null)
                 return;
+         
             var opaquePipeline = GetPipeline<OpaqueShader, OpaqueVertex>();
             opaquePipeline.BindScene(scene);
             opaquePipeline.BindZBuffer(zBuffer);
@@ -85,7 +103,9 @@ namespace GraphicsLib.Types2
             {
                 EnqueuePrimitivesRecursive<OpaqueShader, OpaqueVertex>(opaquePipeline, node, Matrix4x4.Identity);
             }
-            foreach (var (Transform, Skin, Primitive) in opaqueQueue)
+            Vector3 cameraPosition = scene.Camera.Position;
+            foreach (var (Transform, Skin, Primitive) in opaqueQueue.OrderByDescending(x => (Vector3.Transform(x.Primitive.BoundingBox!.Value.Center, x.Transform)
+                                    - cameraPosition).LengthSquared()))
             {
                 if (Skin != null)
                 {
@@ -104,10 +124,12 @@ namespace GraphicsLib.Types2
             blendPipeline.BindScene(scene);
             blendPipeline.BindZBuffer(zBuffer);
             NonOpaqueShader.BindScene(scene);
-            Vector3 cameraPosition = scene.Camera.Position;
+            
             if (sortNonOpaque)
             {
-                foreach (var (Transform, Skin, Primitive) in nonOpaqueQueue.OrderBy(x => (Vector3.Transform(x.Primitive.BoundingBox!.Value.Center, x.Transform) - cameraPosition).LengthSquared()))
+                foreach (var (Transform, Skin, Primitive) in nonOpaqueQueue
+                    .OrderBy(x => (Vector3.Transform(x.Primitive.BoundingBox!.Value.Center, x.Transform)
+                                    - cameraPosition).LengthSquared()))
                 {
                     if (Skin != null)
                     {
@@ -256,6 +278,7 @@ namespace GraphicsLib.Types2
 
                 foreach (var primitive in primitives)
                 {
+                    TestShaderGenerator(node, primitive);
                     if (primitive.Material?.AlphaMode == Types.GltfTypes.GltfMaterialAlphaMode.OPAQUE)
                     {
                         opaqueQueue.Enqueue((currentTransformation, node.AppliedSkin, primitive));

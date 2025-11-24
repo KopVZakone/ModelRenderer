@@ -9,6 +9,7 @@ using System.Linq;
 using System;
 using System.Numerics;
 using System.Collections.Concurrent;
+using GraphicsLib.Types3;
 
 namespace GraphicsLib.Types2
 {
@@ -30,16 +31,22 @@ namespace GraphicsLib.Types2
                     MessageBox.Show($"Model requires extensions : {gltfRoot.ExtensionsRequired.Aggregate((a, b) => a + ", " + b)}.");
                 }
                 Material[] materialsList;
+                MaterialV2[] materialsV2List;
                 if (gltfRoot.Materials != null)
                 {
                     materialsList = new Material[gltfRoot.Materials.Count];
+                    materialsV2List = new MaterialV2[gltfRoot.Materials.Count];
                     Parallel.For(0, gltfRoot.Materials.Count, i =>
-                        materialsList[i] = Material.FromGltfMaterial(gltfRoot.Materials[i])
+                        {
+                            materialsList[i] = Material.FromGltfMaterial(gltfRoot.Materials[i]);
+                            materialsV2List[i] = MaterialV2.FromGltfMaterial(gltfRoot.Materials[i]);
+                        }  
                     );
                 }
                 else
                 {
                     materialsList = [Material.defaultMaterial];
+                    materialsV2List = [MaterialV2.defaultMaterial];
                 }
                 if (gltfRoot.Skins != null)
                 {
@@ -58,9 +65,8 @@ namespace GraphicsLib.Types2
                         scene.RootModelNodes = new ModelNode[gltfScene.Nodes.Length];
                         for(int i = 0; i < gltfScene.Nodes.Length; i++)
                         {
-                            scene.RootModelNodes[i] = ParseNode(gltfRoot.Nodes![gltfScene.Nodes[i]], materialsList).Result;
+                            scene.RootModelNodes[i] = ParseNode(gltfRoot.Nodes![gltfScene.Nodes[i]], materialsList, materialsV2List).Result;
                         }
-
                     }
                     if(!skinCache.IsEmpty)
                     {
@@ -76,7 +82,7 @@ namespace GraphicsLib.Types2
             }
         }
         private static readonly ConcurrentDictionary<GltfSkin, ModelSkin> skinCache = [];
-        private static ModelMesh ParseMesh(GltfMesh gltfMesh, Material[] materialsList)
+        private static ModelMesh ParseMesh(GltfMesh gltfMesh, Material[] materialsList, MaterialV2[] materialsV2List)
         {
             var primitives = new ModelPrimitive[gltfMesh.Primitives.Length];
             Parallel.For(0, gltfMesh.Primitives.Length, i =>
@@ -106,6 +112,7 @@ namespace GraphicsLib.Types2
                         VertexCount = vertexCount,
                         Indices = p.PointIndices,
                         Material = p.Material.HasValue ? materialsList[p.Material.Value] : Material.defaultMaterial,
+                        MaterialV2 = p.Material.HasValue ? materialsV2List[p.Material.Value] : MaterialV2.defaultMaterial,
                         Joints = [.. weightsData],
                         Mode = p.Mode,
                         AttributesOffsets = attributesOffsets,
@@ -121,12 +128,12 @@ namespace GraphicsLib.Types2
             };
             return mesh;
         }
-        private static async Task<ModelNode> ParseNode(GltfNode gltfNode, Material[] materialsList)
+        private static async Task<ModelNode> ParseNode(GltfNode gltfNode, Material[] materialsList, MaterialV2[] materialsV2List)
         {
             var childrenTasks = gltfNode.ChildrenNodes?
-            .Select(child => ParseNode(child, materialsList))
+            .Select(child => ParseNode(child, materialsList, materialsV2List))
                 .ToArray() ?? [];
-            ModelMesh? mesh = gltfNode.Mesh != null ? ParseMesh(gltfNode.Mesh, materialsList) : null;
+            ModelMesh? mesh = gltfNode.Mesh != null ? ParseMesh(gltfNode.Mesh, materialsList, materialsV2List) : null;
             ModelNode[]? childrenNodes = await Task.WhenAll(childrenTasks);
             if(childrenNodes.Length == 0)
             {

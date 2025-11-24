@@ -186,32 +186,33 @@ namespace GraphicsLib.Primitives
                 {
                     Vector4 color = zbufferV2.At(i).color;
                     Vector3 corrected = Vector3.SquareRoot(Vector3.SquareRoot(color.AsVector3()));
-                    ////gamma correction
-                    //if (color.X < 0.04045f)
-                    //{
-                    //    color.X /= 12.92f;
-                    //}
-                    //else
-                    //{
-                    //    color.X = MathF.Pow((color.X + 0.055f) / 1.055f, 2.4f);
-                    //}
-                    //if (color.Y < 0.04045f)
-                    //{
-                    //    color.Y /= 12.92f;
-                    //}
-                    //else
-                    //{
-                    //    color.Y = MathF.Pow((color.Y + 0.055f) / 1.055f, 2.4f);
-                    //}
-                    //if (color.Z < 0.04045f)
-                    //{
-                    //    color.Z /= 12.92f;
-                    //}
-                    //else
-                    //{
-                    //    color.Z = MathF.Pow((color.Z + 0.055f) / 1.055f, 2.4f);
-                    //}
-                    Vector3 clampedColor = Vector3.Clamp(corrected, Vector3.Zero, new Vector3(1));
+                    //Vector3 corrected = color.AsVector3();
+                ////gamma correction
+                //if (color.X < 0.04045f)
+                //{
+                //    color.X /= 12.92f;
+                //}
+                //else
+                //{
+                //    color.X = MathF.Pow((color.X + 0.055f) / 1.055f, 2.4f);
+                //}
+                //if (color.Y < 0.04045f)
+                //{
+                //    color.Y /= 12.92f;
+                //}
+                //else
+                //{
+                //    color.Y = MathF.Pow((color.Y + 0.055f) / 1.055f, 2.4f);
+                //}
+                //if (color.Z < 0.04045f)
+                //{
+                //    color.Z /= 12.92f;
+                //}
+                //else
+                //{
+                //    color.Z = MathF.Pow((color.Z + 0.055f) / 1.055f, 2.4f);
+                //}
+                Vector3 clampedColor = Vector3.Clamp(corrected, Vector3.Zero, new Vector3(1));
                     uint c = (uint)(clampedColor.X * 255) << 16 | (uint)(clampedColor.Y * 255) << 8 | (uint)(clampedColor.Z * 255) | (uint)(color.W * 255) << 24;
                     ptr[i] = c;
                 }

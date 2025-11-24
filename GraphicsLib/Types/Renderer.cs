@@ -1,12 +1,11 @@
 ﻿using GraphicsLib.Primitives;
 using GraphicsLib.Shaders;
-using GraphicsLib.Types;
 using System;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Windows.Media.Imaging;
 
-namespace GraphicsLib
+namespace GraphicsLib.Types
 {
     public class Renderer
     {

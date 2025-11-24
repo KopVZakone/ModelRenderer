@@ -33,7 +33,7 @@ namespace GraphicsLib.Types2.Shaders
         {
             cameraPosition = scene.Camera!.Position;
             ambientLightColor = new Vector3(1f);
-            ambientLightIntensity = 0.5f;
+            ambientLightIntensity = 0.0001f;
             lightSources = scene.LightSources;
         }
         public static void UnbindScene()

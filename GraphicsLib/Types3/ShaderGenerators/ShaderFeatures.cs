@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GraphicsLib.Types2.Shaders
+namespace GraphicsLib.Types3.ShaderGenerators
 {
     [Flags]
     public enum ShaderFeatures
@@ -14,6 +14,6 @@ namespace GraphicsLib.Types2.Shaders
         MetallicRoughnessTexture = 1 << 2,
         EmissiveTexture = 1 << 3,
         OcclusionTexture = 1 << 4,
-        BlendModeAlpha = 1 << 4,
+        BlendModeNonOpaque = 1 << 5,
     }
 }
