@@ -35,6 +35,7 @@ namespace GraphicsLib.Types2
             shader.BindPrimitive(ref primitive, Matrix4x4.Identity);
             Span<float> testVertex = stackalloc float[config.InterpolatedDataSize];
             shader.VertexShader(0, testVertex);
+            var color = shader.PixelShader(testVertex);
             shader.UnbindPrimitive();
             shader.UnbindSkin();
         }

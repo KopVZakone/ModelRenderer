@@ -40,7 +40,7 @@ namespace GraphicsLib.Types3.ShaderGenerators
         {
             emissive *= emissiveTextureSampler.Sample(emissiveUv).AsVector3();
         }
-        public static void CalculateviewDir(out Vector3 viewDir, in Vector3 cameraPosition, in Vector3 worldPosition)
+        public static void CalculateViewDir(out Vector3 viewDir, in Vector3 cameraPosition, in Vector3 worldPosition)
         {
             viewDir = Vector3.Normalize(cameraPosition - worldPosition);
         }
