@@ -12,7 +12,7 @@ namespace GraphicsLib.Types3.ShaderGenerators
 {
     public static class ShaderComponents
     {
-        public static void CalculateTextureNormal(ref Vector3 normal, in Vector4 tangent, in Vector2 normalUv, in Sampler NormalTextureSampler)
+        public static void CalculateTextureNormal(ref Vector3 normal, in Vector4 tangent, in Vector2 normalUv, Sampler NormalTextureSampler)
         {
             Vector3 tangentSpaceNormal = NormalTextureSampler.Sample(normalUv).AsVector3();
             Vector3 tangent3 = tangent.AsVector3();
@@ -22,7 +22,7 @@ namespace GraphicsLib.Types3.ShaderGenerators
             Vector3 bitangent = sign * Vector3.Cross(normal, tangent3);
             normal = Vector3.Normalize(tangent3 * tangentSpaceNormal.X + bitangent * tangentSpaceNormal.Y + normal * tangentSpaceNormal.Z);
         }
-        public static void CalculateTextureMetallicRoughness(ref float roughness, ref float metallic, in Vector2 metallicRoughnessUV, in Sampler metallicRoughnessTextureSampler)
+        public static void CalculateTextureMetallicRoughness(ref float roughness, ref float metallic, in Vector2 metallicRoughnessUV, Sampler metallicRoughnessTextureSampler)
         {
             Vector4 metallicRoughness = metallicRoughnessTextureSampler.Sample(metallicRoughnessUV);
             roughness *= metallicRoughness.Y;
@@ -142,7 +142,7 @@ namespace GraphicsLib.Types3.ShaderGenerators
                 value
             );
         }
-        public static void WriteVector2(Span<float> span, int offset, Vector3 value)
+        public static void WriteVector2(Span<float> span, int offset, Vector2 value)
         {
             ref float target = ref span[offset];
 

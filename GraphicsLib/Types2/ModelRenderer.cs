@@ -27,7 +27,7 @@ namespace GraphicsLib.Types2
 
         public static void TestShaderGenerator(ModelNode node, ModelPrimitive primitive)
         {
-            ShaderFeatures shaderFeatures = 0;
+            ShaderFeatures shaderFeatures = ShaderFeatures.BaseColorTexture | ShaderFeatures.NormalMap | ShaderFeatures.MetallicRoughnessTexture;
             var config =  ShaderConfigurationFactory.Create(shaderFeatures, primitive.MaterialV2, node.AppliedSkin != null);
             var shaderType = ShaderFactory.CreateShader(config);
             ShaderBase shader = (ShaderBase)Activator.CreateInstance(shaderType);
@@ -424,7 +424,6 @@ namespace GraphicsLib.Types2
 
                 return new(min, max);
             }
-
 
             public bool IsBoundingBoxWithinView(in BoundingBox boundingBox, in Matrix4x4 transform)
             {

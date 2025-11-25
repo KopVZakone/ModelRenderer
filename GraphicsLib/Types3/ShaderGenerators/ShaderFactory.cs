@@ -603,9 +603,9 @@ namespace GraphicsLib.Types3.ShaderGenerators
             typeBuilder.DefineMethodOverride(methodBuilder, basePixelShader);
         }
         private static MethodBuilder GeneratePixelShaderMethod(
-    TypeBuilder typeBuilder,
-    ShaderConfiguration config,
-    Dictionary<string, FieldBuilder> attributeFields)
+            TypeBuilder typeBuilder,
+            ShaderConfiguration config,
+            Dictionary<string, FieldBuilder> attributeFields)
         {
             MethodBuilder methodBuilder = typeBuilder.DefineMethod(
                 "PixelShader",
@@ -615,21 +615,342 @@ namespace GraphicsLib.Types3.ShaderGenerators
 
             ILGenerator il = methodBuilder.GetILGenerator();
 
-            // Собираем все необходимые MethodInfo и FieldInfo
             var methodRefs = CollectPixelShaderMethodReferences();
             var fieldRefs = CollectPixelShaderFieldReferences();
-
-            // Объявляем локальные переменные
             var locals = DeclarePixelShaderLocalVariables(il, config);
 
-            // Генерируем код чтения атрибутов из Span
-            GeneratePixelShaderInputReading(il, config, methodRefs, locals);
-
-            // Генерируем код обработки материала и освещения
-            GeneratePixelShaderProcessing(il, config, methodRefs, fieldRefs, locals);
-
+            // Основной поток пиксельного шейдера
+            ReadInputAttributes(il, config, methodRefs, locals);
+            LoadBaseMaterialParameters(il, methodRefs, fieldRefs, locals);
+            ProcessDiffuseTexture(il, config, methodRefs, fieldRefs, locals);
+            if (!PerformAlphaTest(il, locals))
+            {
+                    ProcessTextures(il, config, methodRefs, fieldRefs, locals);
+                    CalculateLighting(il, methodRefs, fieldRefs, locals);
+                    AssembleFinalColor(il, methodRefs, locals);
+            }
+            //ReturnTransparentBlack(il);
             il.Emit(OpCodes.Ret);
             return methodBuilder;
+        }
+
+        // === ЧТЕНИЕ ВХОДНЫХ ДАННЫХ ===
+
+        private static void ReadInputAttributes(
+            ILGenerator il,
+            ShaderConfiguration config,
+            PixelShaderMethodReferences methodRefs,
+            PixelShaderLocals locals)
+        {
+            VertexAttributeOffsets offsets = config.Offsets;
+
+            ReadWorldPosition(il, offsets, methodRefs, locals);
+            ReadNormal(il, offsets, methodRefs, locals);
+
+            if (config.Features.HasFlag(ShaderFeatures.NormalMap))
+            {
+                ReadTangent(il, offsets, methodRefs, locals);
+            }
+
+            ReadUVCoordinates(il, config, offsets, methodRefs, locals);
+        }
+
+        private static void ReadWorldPosition(
+            ILGenerator il,
+            VertexAttributeOffsets offsets,
+            PixelShaderMethodReferences methodRefs,
+            PixelShaderLocals locals)
+        {
+            ReadVector3FromSpan(il, locals.WorldPosition, offsets.WorldPosition, methodRefs.ReadVector3);
+        }
+
+        private static void ReadNormal(
+            ILGenerator il,
+            VertexAttributeOffsets offsets,
+            PixelShaderMethodReferences methodRefs,
+            PixelShaderLocals locals)
+        {
+            ReadVector3FromSpan(il, locals.Normal, offsets.Normal, methodRefs.ReadVector3);
+            il.Emit(OpCodes.Ldloc, locals.Normal);
+            il.Emit(OpCodes.Call, methodRefs.Vector3Normalize);
+            il.Emit(OpCodes.Stloc, locals.Normal);
+        }
+
+        private static void ReadTangent(
+            ILGenerator il,
+            VertexAttributeOffsets offsets,
+            PixelShaderMethodReferences methodRefs,
+            PixelShaderLocals locals)
+        {
+            ReadVector4FromSpan(il, locals.Tangent, offsets.Tangent.Value, methodRefs.ReadVector4);
+        }
+
+        private static void ReadUVCoordinates(
+            ILGenerator il,
+            ShaderConfiguration config,
+            VertexAttributeOffsets offsets,
+            PixelShaderMethodReferences methodRefs,
+            PixelShaderLocals locals)
+        {
+            foreach (var uvIndex in config.TextureBindings.GetUsedUVs())
+            {
+                if (offsets.UVOffsets.TryGetValue(uvIndex, out int uvOffset))
+                {
+                    ReadVector2FromSpan(il, locals.UVLocals[uvIndex], uvOffset, methodRefs.ReadVector2);
+                }
+            }
+        }
+
+        // === ЗАГРУЗКА ПАРАМЕТРОВ МАТЕРИАЛА ===
+
+        private static void LoadBaseMaterialParameters(
+            ILGenerator il,
+            PixelShaderMethodReferences methodRefs,
+            PixelShaderFieldReferences fieldRefs,
+            PixelShaderLocals locals)
+        {
+            il.Emit(OpCodes.Ldarg_0); // this
+            il.Emit(OpCodes.Ldflda, fieldRefs.CurrentMaterial);
+            il.Emit(OpCodes.Ldloca, locals.DiffuseColorFull);
+            il.Emit(OpCodes.Ldloca, locals.DiffuseColor);
+            il.Emit(OpCodes.Ldloca, locals.Emissive);
+            il.Emit(OpCodes.Ldloca, locals.Metallic);
+            il.Emit(OpCodes.Ldloca, locals.Roughness);
+            il.Emit(OpCodes.Call, methodRefs.GetBasePbrParameters);
+        }
+
+        // === АЛЬФА-ТЕСТ ===
+
+        private static bool PerformAlphaTest(ILGenerator il, PixelShaderLocals locals)
+        {
+            Label skipPixelLabel = il.DefineLabel();
+            Label returnTransparentLabel = il.DefineLabel();
+
+            il.Emit(OpCodes.Ldloca, locals.DiffuseColorFull);
+            il.Emit(OpCodes.Ldfld, typeof(Vector4).GetField("W"));
+            il.Emit(OpCodes.Ldc_R4, 0.0001f);
+            il.Emit(OpCodes.Bge_Un, skipPixelLabel);
+
+            // Возвращаем прозрачный черный цвет
+            ReturnTransparentBlack(il);
+            il.MarkLabel(returnTransparentLabel);
+
+            il.MarkLabel(skipPixelLabel);
+            return false;
+        }
+
+        private static void ReturnTransparentBlack(ILGenerator il)
+        {
+            il.Emit(OpCodes.Ldloca_S, 0);
+            il.Emit(OpCodes.Initobj, typeof(Vector4));
+            il.Emit(OpCodes.Ldloc_0);
+            il.Emit(OpCodes.Ret);
+        }
+
+        // === ОБРАБОТКА ТЕКСТУР ===
+
+        private static void ProcessTextures(
+            ILGenerator il,
+            ShaderConfiguration config,
+            PixelShaderMethodReferences methodRefs,
+            PixelShaderFieldReferences fieldRefs,
+            PixelShaderLocals locals)
+        {
+            ProcessNormalTexture(il, config, methodRefs, fieldRefs, locals);
+            ProcessMetallicRoughnessTexture(il, config, methodRefs, fieldRefs, locals);
+            ProcessEmissiveTexture(il, config, methodRefs, fieldRefs, locals);
+        }
+
+        private static void ProcessDiffuseTexture(
+            ILGenerator il,
+            ShaderConfiguration config,
+            PixelShaderMethodReferences methodRefs,
+            PixelShaderFieldReferences fieldRefs,
+            PixelShaderLocals locals)
+        {
+            if (!config.Features.HasFlag(ShaderFeatures.BaseColorTexture)) return;
+
+            var uvIndex = config.TextureBindings.BaseColorTexCoord.Value;
+            il.Emit(OpCodes.Ldloca, locals.DiffuseColorFull);
+            il.Emit(OpCodes.Ldloca, locals.UVLocals[uvIndex]);
+            il.Emit(OpCodes.Ldarg_0); // this
+            il.Emit(OpCodes.Ldfld, fieldRefs.CurrentMaterial);
+            il.Emit(OpCodes.Call, methodRefs.GetBaseColorTextureSampler);
+            il.Emit(OpCodes.Call, methodRefs.CalculateTextureDiffuseColor);
+            il.Emit(OpCodes.Ldloc, locals.DiffuseColorFull);
+            il.Emit(OpCodes.Call, methodRefs.Vector4AsVector3);
+            il.Emit(OpCodes.Stloc, locals.DiffuseColor);
+
+        }
+
+        private static void ProcessNormalTexture(
+            ILGenerator il,
+            ShaderConfiguration config,
+            PixelShaderMethodReferences methodRefs,
+            PixelShaderFieldReferences fieldRefs,
+            PixelShaderLocals locals)
+        {
+            if (!config.Features.HasFlag(ShaderFeatures.NormalMap)) return;
+
+            var uvIndex = config.TextureBindings.NormalTexCoord.Value;
+            il.Emit(OpCodes.Ldloca, locals.Normal);
+            il.Emit(OpCodes.Ldloca, locals.Tangent);
+            il.Emit(OpCodes.Ldloca, locals.UVLocals[uvIndex]);
+            il.Emit(OpCodes.Ldarg_0); // this
+            il.Emit(OpCodes.Ldfld, fieldRefs.CurrentMaterial);
+            il.Emit(OpCodes.Call, methodRefs.GetNormalTextureSampler);
+            il.Emit(OpCodes.Call, methodRefs.CalculateTextureNormal);
+        }
+
+        private static void ProcessMetallicRoughnessTexture(
+            ILGenerator il,
+            ShaderConfiguration config,
+            PixelShaderMethodReferences methodRefs,
+            PixelShaderFieldReferences fieldRefs,
+            PixelShaderLocals locals)
+        {
+            if (!config.Features.HasFlag(ShaderFeatures.MetallicRoughnessTexture)) return;
+
+            var uvIndex = config.TextureBindings.MetallicRoughnessTexCoord.Value;
+            il.Emit(OpCodes.Ldloca, locals.Roughness);
+            il.Emit(OpCodes.Ldloca, locals.Metallic);
+            il.Emit(OpCodes.Ldloca, locals.UVLocals[uvIndex]);
+            il.Emit(OpCodes.Ldarg_0); // this
+            il.Emit(OpCodes.Ldfld, fieldRefs.CurrentMaterial);
+            il.Emit(OpCodes.Call, methodRefs.GetMetallicRoughnessTextureSampler);
+            il.Emit(OpCodes.Call, methodRefs.CalculateTextureMetallicRoughness);
+        }
+
+        private static void ProcessEmissiveTexture(
+            ILGenerator il,
+            ShaderConfiguration config,
+            PixelShaderMethodReferences methodRefs,
+            PixelShaderFieldReferences fieldRefs,
+            PixelShaderLocals locals)
+        {
+            if (!config.Features.HasFlag(ShaderFeatures.EmissiveTexture)) return;
+
+            var uvIndex = config.TextureBindings.EmissiveTexCoord.Value;
+            il.Emit(OpCodes.Ldloca, locals.Emissive);
+            il.Emit(OpCodes.Ldloca, locals.UVLocals[uvIndex]);
+            il.Emit(OpCodes.Ldarg_0); // this
+            il.Emit(OpCodes.Ldfld, fieldRefs.CurrentMaterial);
+            il.Emit(OpCodes.Call, methodRefs.GetEmissiveTextureSampler);
+            il.Emit(OpCodes.Call, methodRefs.CalculateTextureEmissive);
+        }
+
+        // === РАСЧЕТ ОСВЕЩЕНИЯ ===
+
+        private static void CalculateLighting(
+            ILGenerator il,
+            PixelShaderMethodReferences methodRefs,
+            PixelShaderFieldReferences fieldRefs,
+            PixelShaderLocals locals)
+        {
+            CalculateViewDirection(il, methodRefs, fieldRefs, locals);
+            InitializeFinalColor(il, locals);
+            CalculateAmbientLighting(il, methodRefs, fieldRefs, locals);
+            CalculatePbrLighting(il, methodRefs, fieldRefs, locals);
+            AddEmissiveContribution(il, locals);
+        }
+
+        private static void CalculateViewDirection(
+            ILGenerator il,
+            PixelShaderMethodReferences methodRefs,
+            PixelShaderFieldReferences fieldRefs,
+            PixelShaderLocals locals)
+        {
+            il.Emit(OpCodes.Ldloca, locals.ViewDir);
+            il.Emit(OpCodes.Ldarg_0); // this
+            il.Emit(OpCodes.Ldflda, fieldRefs.CameraPosition);
+            il.Emit(OpCodes.Ldloca, locals.WorldPosition);
+            il.Emit(OpCodes.Call, methodRefs.CalculateViewDir);
+        }
+
+        private static void InitializeFinalColor(ILGenerator il, PixelShaderLocals locals)
+        {
+            il.Emit(OpCodes.Ldloca, locals.FinalColor);
+            il.Emit(OpCodes.Initobj, typeof(Vector3));
+        }
+
+        private static void CalculateAmbientLighting(
+            ILGenerator il,
+            PixelShaderMethodReferences methodRefs,
+            PixelShaderFieldReferences fieldRefs,
+            PixelShaderLocals locals)
+        {
+            il.Emit(OpCodes.Ldloca, locals.FinalColor);
+            il.Emit(OpCodes.Ldloca, locals.DiffuseColor);
+            il.Emit(OpCodes.Ldarg_0); // this
+            il.Emit(OpCodes.Ldflda, fieldRefs.AmbientLightColor);
+            il.Emit(OpCodes.Ldarg_0); // this
+            il.Emit(OpCodes.Ldflda, fieldRefs.AmbientLightIntensity);
+            il.Emit(OpCodes.Call, methodRefs.CalculateAmbient);
+        }
+
+        private static void CalculatePbrLighting(
+            ILGenerator il,
+            PixelShaderMethodReferences methodRefs,
+            PixelShaderFieldReferences fieldRefs,
+            PixelShaderLocals locals)
+        {
+            il.Emit(OpCodes.Ldloca, locals.FinalColor);
+            il.Emit(OpCodes.Ldarg_0); // this
+            il.Emit(OpCodes.Ldflda, fieldRefs.LightSources);
+            il.Emit(OpCodes.Ldloca, locals.DiffuseColor);
+            il.Emit(OpCodes.Ldloca, locals.WorldPosition);
+            il.Emit(OpCodes.Ldloca, locals.Normal);
+            il.Emit(OpCodes.Ldloca, locals.ViewDir);
+            il.Emit(OpCodes.Ldloca, locals.Metallic);
+            il.Emit(OpCodes.Ldloca, locals.Roughness);
+            il.Emit(OpCodes.Call, methodRefs.CalculatePbr);
+        }
+
+        private static void AddEmissiveContribution(ILGenerator il, PixelShaderLocals locals)
+        {
+            il.Emit(OpCodes.Ldloc, locals.FinalColor);
+            il.Emit(OpCodes.Ldloc, locals.Emissive);
+            il.Emit(OpCodes.Call, typeof(Vector3).GetMethod("op_Addition"));
+            il.Emit(OpCodes.Stloc, locals.FinalColor);
+        }
+
+        // === ФОРМИРОВАНИЕ ФИНАЛЬНОГО ЦВЕТА ===
+
+        private static void AssembleFinalColor(
+            ILGenerator il,
+            PixelShaderMethodReferences methodRefs,
+            PixelShaderLocals locals)
+        {
+            il.Emit(OpCodes.Ldloc, locals.FinalColor);
+            il.Emit(OpCodes.Ldloc, locals.DiffuseColorFull);
+            il.Emit(OpCodes.Ldfld, typeof(Vector4).GetField("W"));
+            il.Emit(OpCodes.Newobj, typeof(Vector4).GetConstructor(new[] { typeof(Vector3), typeof(float) }));
+        }
+
+        // === ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ЧТЕНИЯ ===
+
+        private static void ReadVector4FromSpan(ILGenerator il, LocalBuilder local, int offset, MethodInfo readMethod)
+        {
+            il.Emit(OpCodes.Ldarg_1); // input span
+            il.Emit(OpCodes.Ldc_I4, offset);
+            il.Emit(OpCodes.Call, readMethod);
+            il.Emit(OpCodes.Stloc, local);
+        }
+
+        private static void ReadVector3FromSpan(ILGenerator il, LocalBuilder local, int offset, MethodInfo readMethod)
+        {
+            il.Emit(OpCodes.Ldarg_1); // input span
+            il.Emit(OpCodes.Ldc_I4, offset);
+            il.Emit(OpCodes.Call, readMethod);
+            il.Emit(OpCodes.Stloc, local);
+        }
+
+        private static void ReadVector2FromSpan(ILGenerator il, LocalBuilder local, int offset, MethodInfo readMethod)
+        {
+            il.Emit(OpCodes.Ldarg_1); // input span
+            il.Emit(OpCodes.Ldc_I4, offset);
+            il.Emit(OpCodes.Call, readMethod);
+            il.Emit(OpCodes.Stloc, local);
         }
 
         // Сбор всех используемых MethodInfo для пиксельного шейдера
@@ -718,193 +1039,6 @@ namespace GraphicsLib.Types3.ShaderGenerators
             }
 
             return locals;
-        }
-
-        // Генерация кода чтения атрибутов из входного Span
-        private static void GeneratePixelShaderInputReading(
-            ILGenerator il,
-            ShaderConfiguration config,
-            PixelShaderMethodReferences methodRefs,
-            PixelShaderLocals locals)
-        {
-            VertexAttributeOffsets offsets = config.Offsets;
-
-            // Чтение WorldPosition
-            ReadVector3FromSpan(il, locals.WorldPosition, offsets.WorldPosition, methodRefs.ReadVector3);
-
-            // Чтение Normal
-            ReadVector3FromSpan(il, locals.Normal, offsets.Normal, methodRefs.ReadVector3);
-            il.Emit(OpCodes.Ldloca, locals.Normal);
-            il.Emit(OpCodes.Call, methodRefs.Vector3Normalize);
-
-            // Чтение Tangent (если есть)
-            if (config.Features.HasFlag(ShaderFeatures.NormalMap))
-            {
-                ReadVector4FromSpan(il, locals.Tangent, offsets.Tangent.Value, methodRefs.ReadVector4);
-            }
-
-            // Чтение UV координат
-            foreach (var uvIndex in config.TextureBindings.GetUsedUVs())
-            {
-                if (offsets.UVOffsets.TryGetValue(uvIndex, out int uvOffset))
-                {
-                    ReadVector2FromSpan(il, locals.UVLocals[uvIndex], uvOffset, methodRefs.ReadVector2);
-                }
-            }
-        }
-
-        // Генерация кода обработки материала и освещения
-        private static void GeneratePixelShaderProcessing(
-            ILGenerator il,
-            ShaderConfiguration config,
-            PixelShaderMethodReferences methodRefs,
-            PixelShaderFieldReferences fieldRefs,
-            PixelShaderLocals locals)
-        {
-            // Получаем базовые параметры PBR из материала
-            il.Emit(OpCodes.Ldarg_0); // this
-            il.Emit(OpCodes.Ldfld, fieldRefs.CurrentMaterial);
-            il.Emit(OpCodes.Ldloca, locals.DiffuseColorFull);
-            il.Emit(OpCodes.Ldloca, locals.DiffuseColor);
-            il.Emit(OpCodes.Ldloca, locals.Emissive);
-            il.Emit(OpCodes.Ldloca, locals.Metallic);
-            il.Emit(OpCodes.Ldloca, locals.Roughness);
-            il.Emit(OpCodes.Call, methodRefs.GetBasePbrParameters);
-
-            // Проверка альфа-отсечения
-            Label skipPixelLabel = il.DefineLabel();
-            il.Emit(OpCodes.Ldloca, locals.DiffuseColorFull);
-            il.Emit(OpCodes.Ldfld, typeof(Vector4).GetField("W"));
-            il.Emit(OpCodes.Ldc_R4, 0.0001f);
-            il.Emit(OpCodes.Bge_Un, skipPixelLabel);
-
-            // Возвращаем прозрачный черный цвет
-            il.Emit(OpCodes.Ldloca_S, 0);
-            il.Emit(OpCodes.Initobj, typeof(Vector4));
-            il.Emit(OpCodes.Ldloc_0);
-            il.Emit(OpCodes.Ret);
-
-            il.MarkLabel(skipPixelLabel);
-
-            // Обработка диффузного цвета текстурой (если есть)
-            if (config.Features.HasFlag(ShaderFeatures.BaseColorTexture))
-            {
-                var uvIndex = config.TextureBindings.BaseColorTexCoord.Value;
-                il.Emit(OpCodes.Ldloca, locals.DiffuseColorFull);
-                il.Emit(OpCodes.Ldloc, locals.UVLocals[uvIndex]);
-                il.Emit(OpCodes.Ldarg_0); // this
-                il.Emit(OpCodes.Ldfld, fieldRefs.CurrentMaterial);
-                il.Emit(OpCodes.Call, methodRefs.GetBaseColorTextureSampler);
-                il.Emit(OpCodes.Call, methodRefs.CalculateTextureDiffuseColor);
-            }
-
-            // Обработка нормальной карты (если есть)
-            if (config.Features.HasFlag(ShaderFeatures.NormalMap))
-            {
-                var uvIndex = config.TextureBindings.NormalTexCoord.Value;
-                il.Emit(OpCodes.Ldloca, locals.Normal);
-                il.Emit(OpCodes.Ldloc, locals.Tangent);
-                il.Emit(OpCodes.Ldloc, locals.UVLocals[uvIndex]);
-                il.Emit(OpCodes.Ldarg_0); // this
-                il.Emit(OpCodes.Ldfld, fieldRefs.CurrentMaterial);
-                il.Emit(OpCodes.Call, methodRefs.GetNormalTextureSampler);
-                il.Emit(OpCodes.Call, methodRefs.CalculateTextureNormal);
-            }
-
-            // Обработка металличности и шероховатости (если есть)
-            if (config.Features.HasFlag(ShaderFeatures.MetallicRoughnessTexture))
-            {
-                var uvIndex = config.TextureBindings.MetallicRoughnessTexCoord.Value;
-                il.Emit(OpCodes.Ldloca, locals.Roughness);
-                il.Emit(OpCodes.Ldloca, locals.Metallic);
-                il.Emit(OpCodes.Ldloc, locals.UVLocals[uvIndex]);
-                il.Emit(OpCodes.Ldarg_0); // this
-                il.Emit(OpCodes.Ldfld, fieldRefs.CurrentMaterial);
-                il.Emit(OpCodes.Call, methodRefs.GetMetallicRoughnessTextureSampler);
-                il.Emit(OpCodes.Call, methodRefs.CalculateTextureMetallicRoughness);
-            }
-
-            // Вычисление направления взгляда
-            il.Emit(OpCodes.Ldloca, locals.ViewDir);
-            il.Emit(OpCodes.Ldarg_0); // this
-            il.Emit(OpCodes.Ldfld, fieldRefs.CameraPosition);
-            il.Emit(OpCodes.Ldloc, locals.WorldPosition);
-            il.Emit(OpCodes.Call, methodRefs.CalculateViewDir);
-
-            // Инициализация финального цвета
-            il.Emit(OpCodes.Ldloca, locals.FinalColor);
-            il.Emit(OpCodes.Initobj, typeof(Vector3));
-
-            // Добавление ambient освещения
-            il.Emit(OpCodes.Ldloca, locals.FinalColor);
-            il.Emit(OpCodes.Ldloc, locals.DiffuseColor);
-            il.Emit(OpCodes.Ldarg_0); // this
-            il.Emit(OpCodes.Ldfld, fieldRefs.AmbientLightColor);
-            il.Emit(OpCodes.Ldarg_0); // this
-            il.Emit(OpCodes.Ldfld, fieldRefs.AmbientLightIntensity);
-            il.Emit(OpCodes.Call, methodRefs.CalculateAmbient);
-
-            // Добавление PBR освещения
-            il.Emit(OpCodes.Ldloca, locals.FinalColor);
-            il.Emit(OpCodes.Ldarg_0); // this
-            il.Emit(OpCodes.Ldfld, fieldRefs.LightSources);
-            il.Emit(OpCodes.Ldloc, locals.DiffuseColor);
-            il.Emit(OpCodes.Ldloc, locals.WorldPosition);
-            il.Emit(OpCodes.Ldloc, locals.Normal);
-            il.Emit(OpCodes.Ldloc, locals.ViewDir);
-            il.Emit(OpCodes.Ldloc, locals.Metallic);
-            il.Emit(OpCodes.Ldloc, locals.Roughness);
-            il.Emit(OpCodes.Call, methodRefs.CalculatePbr);
-
-            // Обработка эмиссии (если есть)
-            if (config.Features.HasFlag(ShaderFeatures.EmissiveTexture))
-            {
-                var uvIndex = config.TextureBindings.EmissiveTexCoord.Value;
-                il.Emit(OpCodes.Ldloca, locals.Emissive);
-                il.Emit(OpCodes.Ldloc, locals.UVLocals[uvIndex]);
-                il.Emit(OpCodes.Ldarg_0); // this
-                il.Emit(OpCodes.Ldfld, fieldRefs.CurrentMaterial);
-                il.Emit(OpCodes.Call, methodRefs.GetEmissiveTextureSampler);
-                il.Emit(OpCodes.Call, methodRefs.CalculateTextureEmissive);
-            }
-
-            // Добавление эмиссии к финальному цвету
-            il.Emit(OpCodes.Ldloca, locals.FinalColor);
-            il.Emit(OpCodes.Ldloc, locals.FinalColor);
-            il.Emit(OpCodes.Ldloc, locals.Emissive);
-            il.Emit(OpCodes.Call, typeof(Vector3).GetMethod("op_Addition"));
-            il.Emit(OpCodes.Stloc, locals.FinalColor);
-
-            // Создание и возврат финального Vector4
-            il.Emit(OpCodes.Ldloc, locals.FinalColor);
-            il.Emit(OpCodes.Ldloc, locals.DiffuseColorFull);
-            il.Emit(OpCodes.Ldfld, typeof(Vector4).GetField("W"));
-            il.Emit(OpCodes.Newobj, typeof(Vector4).GetConstructor(new[] { typeof(Vector3), typeof(float) }));
-        }
-
-        // Вспомогательные методы для чтения из Span
-        private static void ReadVector4FromSpan(ILGenerator il, LocalBuilder local, int offset, MethodInfo readMethod)
-        {
-            il.Emit(OpCodes.Ldarg_1); // input span
-            il.Emit(OpCodes.Ldc_I4, offset);
-            il.Emit(OpCodes.Call, readMethod);
-            il.Emit(OpCodes.Stloc, local);
-        }
-
-        private static void ReadVector3FromSpan(ILGenerator il, LocalBuilder local, int offset, MethodInfo readMethod)
-        {
-            il.Emit(OpCodes.Ldarg_1); // input span
-            il.Emit(OpCodes.Ldc_I4, offset);
-            il.Emit(OpCodes.Call, readMethod);
-            il.Emit(OpCodes.Stloc, local);
-        }
-
-        private static void ReadVector2FromSpan(ILGenerator il, LocalBuilder local, int offset, MethodInfo readMethod)
-        {
-            il.Emit(OpCodes.Ldarg_1); // input span
-            il.Emit(OpCodes.Ldc_I4, offset);
-            il.Emit(OpCodes.Call, readMethod);
-            il.Emit(OpCodes.Stloc, local);
         }
 
         // Вспомогательные классы для хранения ссылок пиксельного шейдера
