@@ -41,7 +41,7 @@ namespace GraphicsLib.Types3.ShaderGenerators
         {
             cameraPosition = scene.Camera!.Position;
             ambientLightColor = new Vector3(1f);
-            ambientLightIntensity = 0.1f;
+            ambientLightIntensity = 1f;
             lightSources = scene.LightSources;
         }
 

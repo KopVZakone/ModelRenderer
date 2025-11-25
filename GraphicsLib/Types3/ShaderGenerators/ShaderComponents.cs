@@ -32,9 +32,9 @@ namespace GraphicsLib.Types3.ShaderGenerators
         {
             diffuseColor *= baseColorTextureSampler.Sample(uv);
         }
-        public static void CalculateAmbient(ref Vector3 color, in Vector3 diffuseColor, in Vector3 ambientLightColor, in float ambientLightIntensity)
+        public static void CalculateAmbient(ref Vector3 color, in Vector4 diffuseColor, in Vector3 ambientLightColor, in float ambientLightIntensity)
         {
-            color += diffuseColor * ambientLightColor * ambientLightIntensity;
+            color += diffuseColor.AsVector3() * ambientLightColor * ambientLightIntensity;
         }
         public static void CalculateTextureEmissive(ref Vector3 emissive, in Vector2 emissiveUv, Sampler emissiveTextureSampler)
         {
@@ -44,18 +44,18 @@ namespace GraphicsLib.Types3.ShaderGenerators
         {
             viewDir = Vector3.Normalize(cameraPosition - worldPosition);
         }
-        public static void GetBasePbrParameters(in MaterialV2 material, out Vector4 diffuseColorFull, out Vector3 diffuseColor, out Vector3 emissive, out float metallic, out float roughness)
+        public static void GetBasePbrParameters(in MaterialV2 material, out Vector4 diffuseColorFull, out Vector3 emissive, out float metallic, out float roughness)
         {
             diffuseColorFull = material.BaseColor;
-            diffuseColor = diffuseColorFull.AsVector3();
             metallic = material.Metallic;
             roughness = material.Roughness;
             emissive = material.EmissiveFactor;
         }
-        public static void CalculatePbr(ref Vector3 color, in LightSource[]? lightSources, in Vector3 diffuseColor, in Vector3 worldPosition, in Vector3 normal, in Vector3 viewDir, in float metallic, in float roughness)
+        public static void CalculatePbr(ref Vector3 color, in LightSource[]? lightSources, in Vector4 diffuseColorFull, in Vector3 worldPosition, in Vector3 normal, in Vector3 viewDir, in float metallic, in float roughness)
         {
             if (lightSources is null || lightSources.Length == 0)
                 return;
+            Vector3 diffuseColor = diffuseColorFull.AsVector3();
             Vector3 baseReflectivity = Vector3.Lerp(Vector3.One, diffuseColor, metallic);
             float nDotV = Math.Max(Vector3.Dot(normal, viewDir), 0);
             float oneMinusNDotV = 1 - nDotV;

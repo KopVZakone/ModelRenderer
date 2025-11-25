@@ -394,19 +394,23 @@ namespace GraphicsLib.Types3.ShaderGenerators
             var il = mb.GetILGenerator();
 
             // вычисляем inv = 1f / scalar
-            var inv = il.DeclareLocal(typeof(float));
+            //var inv = il.DeclareLocal(typeof(float));
+            //il.Emit(OpCodes.Ldc_R4, 1f);
+            //il.Emit(OpCodes.Ldarg_3);
+            //il.Emit(OpCodes.Div);
+            //il.Emit(OpCodes.Stloc, inv);
+
+            //// вызываем MulScalar(dst, a, inv)
+            //il.Emit(OpCodes.Ldarg_1);
+            //il.Emit(OpCodes.Ldarg_2);
+            //il.Emit(OpCodes.Ldloc, inv);
+            il.Emit(OpCodes.Ldarg_0);
+            il.Emit(OpCodes.Ldarg_1);
+            il.Emit(OpCodes.Ldarg_2);
             il.Emit(OpCodes.Ldc_R4, 1f);
             il.Emit(OpCodes.Ldarg_3);
             il.Emit(OpCodes.Div);
-            il.Emit(OpCodes.Stloc, inv);
-
-            // вызываем MulScalar(dst, a, inv)
-            il.Emit(OpCodes.Ldarg_1);
-            il.Emit(OpCodes.Ldarg_2);
-            il.Emit(OpCodes.Ldloc, inv);
-
             il.Emit(OpCodes.Call, mulScalar);
-
             il.Emit(OpCodes.Ret);
         }
         static void EmitLerp(TypeBuilder tb, int length)

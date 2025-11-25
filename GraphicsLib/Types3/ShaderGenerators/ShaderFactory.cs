@@ -623,12 +623,12 @@ namespace GraphicsLib.Types3.ShaderGenerators
             ReadInputAttributes(il, config, methodRefs, locals);
             LoadBaseMaterialParameters(il, methodRefs, fieldRefs, locals);
             ProcessDiffuseTexture(il, config, methodRefs, fieldRefs, locals);
-            if (!PerformAlphaTest(il, locals))
-            {
+            //if (!PerformAlphaTest(il, locals))
+            //{
                     ProcessTextures(il, config, methodRefs, fieldRefs, locals);
                     CalculateLighting(il, methodRefs, fieldRefs, locals);
                     AssembleFinalColor(il, methodRefs, locals);
-            }
+            //}
             //ReturnTransparentBlack(il);
             il.Emit(OpCodes.Ret);
             return methodBuilder;
@@ -712,7 +712,6 @@ namespace GraphicsLib.Types3.ShaderGenerators
             il.Emit(OpCodes.Ldarg_0); // this
             il.Emit(OpCodes.Ldflda, fieldRefs.CurrentMaterial);
             il.Emit(OpCodes.Ldloca, locals.DiffuseColorFull);
-            il.Emit(OpCodes.Ldloca, locals.DiffuseColor);
             il.Emit(OpCodes.Ldloca, locals.Emissive);
             il.Emit(OpCodes.Ldloca, locals.Metallic);
             il.Emit(OpCodes.Ldloca, locals.Roughness);
@@ -777,9 +776,6 @@ namespace GraphicsLib.Types3.ShaderGenerators
             il.Emit(OpCodes.Ldfld, fieldRefs.CurrentMaterial);
             il.Emit(OpCodes.Call, methodRefs.GetBaseColorTextureSampler);
             il.Emit(OpCodes.Call, methodRefs.CalculateTextureDiffuseColor);
-            il.Emit(OpCodes.Ldloc, locals.DiffuseColorFull);
-            il.Emit(OpCodes.Call, methodRefs.Vector4AsVector3);
-            il.Emit(OpCodes.Stloc, locals.DiffuseColor);
 
         }
 
@@ -880,7 +876,7 @@ namespace GraphicsLib.Types3.ShaderGenerators
             PixelShaderLocals locals)
         {
             il.Emit(OpCodes.Ldloca, locals.FinalColor);
-            il.Emit(OpCodes.Ldloca, locals.DiffuseColor);
+            il.Emit(OpCodes.Ldloca, locals.DiffuseColorFull);
             il.Emit(OpCodes.Ldarg_0); // this
             il.Emit(OpCodes.Ldflda, fieldRefs.AmbientLightColor);
             il.Emit(OpCodes.Ldarg_0); // this
@@ -897,7 +893,7 @@ namespace GraphicsLib.Types3.ShaderGenerators
             il.Emit(OpCodes.Ldloca, locals.FinalColor);
             il.Emit(OpCodes.Ldarg_0); // this
             il.Emit(OpCodes.Ldflda, fieldRefs.LightSources);
-            il.Emit(OpCodes.Ldloca, locals.DiffuseColor);
+            il.Emit(OpCodes.Ldloca, locals.DiffuseColorFull);
             il.Emit(OpCodes.Ldloca, locals.WorldPosition);
             il.Emit(OpCodes.Ldloca, locals.Normal);
             il.Emit(OpCodes.Ldloca, locals.ViewDir);
@@ -1019,7 +1015,6 @@ namespace GraphicsLib.Types3.ShaderGenerators
             var locals = new PixelShaderLocals
             {
                 DiffuseColorFull = il.DeclareLocal(typeof(Vector4)),
-                DiffuseColor = il.DeclareLocal(typeof(Vector3)),
                 Normal = il.DeclareLocal(typeof(Vector3)),
                 WorldPosition = il.DeclareLocal(typeof(Vector3)),
                 Tangent = config.Features.HasFlag(ShaderFeatures.NormalMap) ?
@@ -1078,7 +1073,6 @@ namespace GraphicsLib.Types3.ShaderGenerators
         private class PixelShaderLocals
         {
             public LocalBuilder DiffuseColorFull { get; set; }
-            public LocalBuilder DiffuseColor { get; set; }
             public LocalBuilder Normal { get; set; }
             public LocalBuilder WorldPosition { get; set; }
             public LocalBuilder Tangent { get; set; }

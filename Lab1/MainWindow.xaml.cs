@@ -1,7 +1,9 @@
 ﻿using GraphicsLib;
+using GraphicsLib.Primitives;
 using GraphicsLib.Shaders;
 using GraphicsLib.Types;
 using GraphicsLib.Types2;
+using GraphicsLib.Types3;
 using Microsoft.Win32;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -14,6 +16,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using static GraphicsLib.Types2.Shaders.PbrShader;
 using static GraphicsLib.Types2.Shaders.PhongShader;
+using Renderer = GraphicsLib.Types3.Renderer;
 
 namespace Lab1
 {
@@ -30,6 +33,7 @@ namespace Lab1
         private Point oldPos;
         private WriteableBitmap? bitmap;
         private readonly ModelRenderer modelRenderer;
+        private readonly Renderer renderer = new Renderer();
         private ModelScene? modelScene;
         private LightSource[] lightSources = [];
         public MainWindow()
@@ -183,32 +187,38 @@ namespace Lab1
                 return;
             }
             camera.UpdateViewPort(bitmap.PixelWidth, bitmap.PixelHeight);
-            modelRenderer.BloomEnabled = EnableBloomCheckBox.IsChecked ?? false;
-            ModelRenderer.TimeElapsed = secondsElapsed;
-            switch (renderMode)
-            {
-                case RenderMode.Textured:
-                    {
-                        modelRenderer.Render<GraphicsLib.Types2.Shaders.PbrShader, PbrVertex>(modelScene, bitmap);
-                    }
-                    break;
-                case RenderMode.Shadowed:
-                    {
-                        modelRenderer.RenderShadow<GraphicsLib.Types2.Shaders.ShadowedPbrShader, PbrVertex>(modelScene, bitmap);
-                    }
-                    break;
-                case RenderMode.Wireframe:
-                    break;
-                case RenderMode.Solid:
-                    break;
-                case RenderMode.Smooth:
-                    {
-                        modelRenderer.Render<GraphicsLib.Types2.Shaders.PhongShader, PhongVertex>(modelScene, bitmap);
-                    }
-                    break;
-                default:
-                    break;
-            }
+            renderer.BloomEnabled = EnableBloomCheckBox.IsChecked ?? false;
+            Renderer.TimeElapsed = secondsElapsed;
+            GraphicsLib.Types3.ShaderGenerators.ShaderFeatures shaderFeatures = 
+                GraphicsLib.Types3.ShaderGenerators.ShaderFeatures.BaseColorTexture;
+            renderer.Render(modelScene, shaderFeatures);
+            bitmap.FlushZBufferV3(renderer.Zbuffer!);
+            //modelRenderer.BloomEnabled = EnableBloomCheckBox.IsChecked ?? false;
+            //ModelRenderer.TimeElapsed = secondsElapsed;
+            //switch (renderMode)
+            //{
+            //    case RenderMode.Textured:
+            //        {
+            //            modelRenderer.Render<GraphicsLib.Types2.Shaders.PbrShader, PbrVertex>(modelScene, bitmap);
+            //        }
+            //        break;
+            //    case RenderMode.Shadowed:
+            //        {
+            //            modelRenderer.RenderShadow<GraphicsLib.Types2.Shaders.ShadowedPbrShader, PbrVertex>(modelScene, bitmap);
+            //        }
+            //        break;
+            //    case RenderMode.Wireframe:
+            //        break;
+            //    case RenderMode.Solid:
+            //        break;
+            //    case RenderMode.Smooth:
+            //        {
+            //            modelRenderer.Render<GraphicsLib.Types2.Shaders.PhongShader, PhongVertex>(modelScene, bitmap);
+            //        }
+            //        break;
+            //    default:
+            //        break;
+            //}
 
             bitmap.Lock();
             bitmap.AddDirtyRect(new Int32Rect(0, 0, bitmap.PixelWidth, bitmap.PixelHeight));
