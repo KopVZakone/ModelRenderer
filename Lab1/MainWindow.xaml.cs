@@ -187,39 +187,49 @@ namespace Lab1
                 return;
             }
             camera.UpdateViewPort(bitmap.PixelWidth, bitmap.PixelHeight);
-            renderer.BloomEnabled = EnableBloomCheckBox.IsChecked ?? false;
-            Renderer.TimeElapsed = secondsElapsed;
-            GraphicsLib.Types3.ShaderGenerators.ShaderFeatures shaderFeatures = 
-                GraphicsLib.Types3.ShaderGenerators.ShaderFeatures.BaseColorTexture;
-            renderer.Render(modelScene, shaderFeatures);
-            bitmap.FlushZBufferV3(renderer.Zbuffer!);
-            //modelRenderer.BloomEnabled = EnableBloomCheckBox.IsChecked ?? false;
-            //ModelRenderer.TimeElapsed = secondsElapsed;
-            //switch (renderMode)
-            //{
-            //    case RenderMode.Textured:
-            //        {
-            //            modelRenderer.Render<GraphicsLib.Types2.Shaders.PbrShader, PbrVertex>(modelScene, bitmap);
-            //        }
-            //        break;
-            //    case RenderMode.Shadowed:
-            //        {
-            //            modelRenderer.RenderShadow<GraphicsLib.Types2.Shaders.ShadowedPbrShader, PbrVertex>(modelScene, bitmap);
-            //        }
-            //        break;
-            //    case RenderMode.Wireframe:
-            //        break;
-            //    case RenderMode.Solid:
-            //        break;
-            //    case RenderMode.Smooth:
-            //        {
-            //            modelRenderer.Render<GraphicsLib.Types2.Shaders.PhongShader, PhongVertex>(modelScene, bitmap);
-            //        }
-            //        break;
-            //    default:
-            //        break;
-            //}
+            if(true)
+            {
+                renderer.BloomEnabled = EnableBloomCheckBox.IsChecked ?? false;
+                Renderer.TimeElapsed = secondsElapsed;
+                GraphicsLib.Types3.ShaderGenerators.ShaderFeatures shaderFeatures = 
+                    GraphicsLib.Types3.ShaderGenerators.ShaderFeatures.BaseColorTexture
+                    | GraphicsLib.Types3.ShaderGenerators.ShaderFeatures.NormalMap
+                    | GraphicsLib.Types3.ShaderGenerators.ShaderFeatures.MetallicRoughnessTexture;
+                renderer.Render(modelScene, shaderFeatures);
+                bitmap.FlushZBufferV3(renderer.Zbuffer!);
+            }
+            else
+            {
+                modelRenderer.BloomEnabled = EnableBloomCheckBox.IsChecked ?? false;
+            ModelRenderer.TimeElapsed = secondsElapsed;
+            switch (renderMode)
+            {
+               case RenderMode.Textured:
+                   {
+                       modelRenderer.Render<GraphicsLib.Types2.Shaders.PbrShader, PbrVertex>(modelScene, bitmap);
+                   }
+                   break;
+               case RenderMode.Shadowed:
+                   {
+                       modelRenderer.RenderShadow<GraphicsLib.Types2.Shaders.ShadowedPbrShader, PbrVertex>(modelScene, bitmap);
+                   }
+                   break;
+               case RenderMode.Wireframe:
+                   break;
+               case RenderMode.Solid:
+                   break;
+               case RenderMode.Smooth:
+                   {
+                       modelRenderer.Render<GraphicsLib.Types2.Shaders.PhongShader, PhongVertex>(modelScene, bitmap);
+                   }
+                   break;
+               default:
+                   break;
+            }
 
+            }
+            
+            
             bitmap.Lock();
             bitmap.AddDirtyRect(new Int32Rect(0, 0, bitmap.PixelWidth, bitmap.PixelHeight));
             bitmap.Unlock();

@@ -185,8 +185,8 @@ namespace GraphicsLib.Primitives
                 for (int i = 0; i < length; i++)
                 {
                     Vector4 color = zbufferV2.At(i).color;
-                    Vector3 corrected = Vector3.SquareRoot(Vector3.SquareRoot(color.AsVector3()));
-                    //Vector3 corrected = color.AsVector3();
+                    // Vector3 corrected = Vector3.SquareRoot(Vector3.SquareRoot(color.AsVector3()));
+                    Vector3 corrected = color.AsVector3();
                 ////gamma correction
                 //if (color.X < 0.04045f)
                 //{

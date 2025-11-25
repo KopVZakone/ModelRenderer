@@ -12,9 +12,9 @@ namespace GraphicsLib.Types3.ShaderGenerators
 {
     public static class ShaderComponents
     {
-        public static void CalculateTextureNormal(ref Vector3 normal, in Vector4 tangent, in Vector2 normalUv, Sampler NormalTextureSampler)
+        public static void CalculateTextureNormal(ref Vector3 normal, in Vector4 tangent, in Vector2 normalUv, NormalTextureInfo NormalTexture)
         {
-            Vector3 tangentSpaceNormal = NormalTextureSampler.Sample(normalUv).AsVector3();
+            Vector3 tangentSpaceNormal = NormalTexture.Sampler.Sample(normalUv).AsVector3();
             Vector3 tangent3 = tangent.AsVector3();
             //decode
             tangentSpaceNormal = tangentSpaceNormal * 2 - Vector3.One;
@@ -22,23 +22,23 @@ namespace GraphicsLib.Types3.ShaderGenerators
             Vector3 bitangent = sign * Vector3.Cross(normal, tangent3);
             normal = Vector3.Normalize(tangent3 * tangentSpaceNormal.X + bitangent * tangentSpaceNormal.Y + normal * tangentSpaceNormal.Z);
         }
-        public static void CalculateTextureMetallicRoughness(ref float roughness, ref float metallic, in Vector2 metallicRoughnessUV, Sampler metallicRoughnessTextureSampler)
+        public static void CalculateTextureMetallicRoughness(ref float roughness, ref float metallic, in Vector2 metallicRoughnessUV, TextureInfo metallicRoughnessTexture)
         {
-            Vector4 metallicRoughness = metallicRoughnessTextureSampler.Sample(metallicRoughnessUV);
+            Vector4 metallicRoughness = metallicRoughnessTexture.Sampler.Sample(metallicRoughnessUV);
             roughness *= metallicRoughness.Y;
             metallic *= metallicRoughness.Z;
         }
-        public static void CalculateTextureDiffuseColor(ref Vector4 diffuseColor, in Vector2 uv, Sampler baseColorTextureSampler)
+        public static void CalculateTextureDiffuseColor(ref Vector4 diffuseColor, in Vector2 uv, TextureInfo baseColorTexture)
         {
-            diffuseColor *= baseColorTextureSampler.Sample(uv);
+            diffuseColor *= baseColorTexture.Sampler.Sample(uv);
         }
         public static void CalculateAmbient(ref Vector3 color, in Vector4 diffuseColor, in Vector3 ambientLightColor, in float ambientLightIntensity)
         {
             color += diffuseColor.AsVector3() * ambientLightColor * ambientLightIntensity;
         }
-        public static void CalculateTextureEmissive(ref Vector3 emissive, in Vector2 emissiveUv, Sampler emissiveTextureSampler)
+        public static void CalculateTextureEmissive(ref Vector3 emissive, in Vector2 emissiveUv, TextureInfo emissiveTexture)
         {
-            emissive *= emissiveTextureSampler.Sample(emissiveUv).AsVector3();
+            emissive *= emissiveTexture.Sampler.Sample(emissiveUv).AsVector3();
         }
         public static void CalculateViewDir(out Vector3 viewDir, in Vector3 cameraPosition, in Vector3 worldPosition)
         {

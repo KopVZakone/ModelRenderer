@@ -985,13 +985,11 @@ namespace GraphicsLib.Types3.ShaderGenerators
 
                 // Методы MaterialV2 для получения сэмплеров
                 GetBaseColorTextureSampler = typeof(MaterialV2).GetProperty("BaseColorTexture")?.GetGetMethod(),
-                GetNormalTextureSampler = typeof(MaterialV2).GetProperty("NormalTexture")?.GetGetMethod()?
-                    .ReturnType.GetProperty("Sampler")?.GetGetMethod(),
+                GetNormalTextureSampler = typeof(MaterialV2).GetProperty("NormalTexture")?.GetGetMethod(),
                 GetMetallicRoughnessTextureSampler = typeof(MaterialV2).GetProperty("MetallicRoughnessTexture")?
                     .GetGetMethod(),
                 GetEmissiveTextureSampler = typeof(MaterialV2).GetProperty("EmissiveTexture")?.GetGetMethod(),
-                GetOcclusionTextureSampler = typeof(MaterialV2).GetProperty("OcclusionTexture")?.GetGetMethod()?
-                    .ReturnType.GetProperty("Sampler")?.GetGetMethod()
+                GetOcclusionTextureSampler = typeof(MaterialV2).GetProperty("OcclusionTexture")?.GetGetMethod()
             };
         }
 

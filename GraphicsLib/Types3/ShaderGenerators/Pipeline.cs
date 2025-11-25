@@ -77,6 +77,8 @@ namespace GraphicsLib.Types3.ShaderGenerators
                 case Types.GltfTypes.GltfMeshMode.TRIANGLES:
                     {
                         Parallel.For(0, primitive.Indices!.Length / 3, RenderLoopParallelOptions, AssembleTriangle);
+                        // for(int i = 0; i < primitive.Indices!.Length / 3; i++)
+                                // AssembleTriangle(i);
                     }
                     break;
                 case Types.GltfTypes.GltfMeshMode.TRIANGLE_STRIP:

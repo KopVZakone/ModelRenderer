@@ -545,6 +545,8 @@ namespace GraphicsLib.Types3.ShaderGenerators
             var aReg = il.DeclareLocal(typeof(Vector128<float>));
             var bReg = il.DeclareLocal(typeof(Vector128<float>));
 
+            // store address
+            EmitLoadAddressWithOffset(il, dstPtr, ofs);
             // a
             EmitLoadAddressWithOffset(il, aPtr, ofs);
             il.Emit(OpCodes.Call, load);
@@ -569,7 +571,6 @@ namespace GraphicsLib.Types3.ShaderGenerators
             il.Emit(OpCodes.Call, add);
 
             // store
-            EmitLoadAddressWithOffset(il, dstPtr, ofs);
             il.Emit(OpCodes.Call, store);
         }
         private static void EmitScalarTailLerp(
@@ -579,7 +580,8 @@ namespace GraphicsLib.Types3.ShaderGenerators
             for (int i = 0; i < count; i++)
             {
                 int ofs = (start + i) * 4;
-
+                // store address
+                EmitLoadAddressWithOffset(il, dstPtr, ofs);
                 // a
                 EmitLoadAddressWithOffset(il, aPtr, ofs);
                 il.Emit(OpCodes.Ldind_R4);
@@ -601,7 +603,6 @@ namespace GraphicsLib.Types3.ShaderGenerators
                 il.Emit(OpCodes.Add);
 
                 // store
-                EmitLoadAddressWithOffset(il, dstPtr, ofs);
                 il.Emit(OpCodes.Stind_R4);
             }
         }

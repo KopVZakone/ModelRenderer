@@ -279,7 +279,7 @@ namespace GraphicsLib.Types2
 
                 foreach (var primitive in primitives)
                 {
-                    TestShaderGenerator(node, primitive);
+                    // TestShaderGenerator(node, primitive);
                     if (primitive.Material?.AlphaMode == Types.GltfTypes.GltfMaterialAlphaMode.OPAQUE)
                     {
                         opaqueQueue.Enqueue((currentTransformation, node.AppliedSkin, primitive));
@@ -450,6 +450,8 @@ namespace GraphicsLib.Types2
                     case Types.GltfTypes.GltfMeshMode.TRIANGLES:
                         {
                             Parallel.For(0, primitive.Indices!.Length / 3, RenderLoopParallelOptions, AssembleTriangle);
+                            // for(int i = 0; i < primitive.Indices!.Length / 3; i++)
+                                // AssembleTriangle(i);
                         }
                         break;
                     case Types.GltfTypes.GltfMeshMode.TRIANGLE_STRIP:
