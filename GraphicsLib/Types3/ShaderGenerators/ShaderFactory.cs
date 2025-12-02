@@ -626,7 +626,7 @@ namespace GraphicsLib.Types3.ShaderGenerators
             //if (!PerformAlphaTest(il, locals))
             //{
                     ProcessTextures(il, config, methodRefs, fieldRefs, locals);
-                    CalculateLighting(il, methodRefs, fieldRefs, locals);
+                    CalculateLighting(il, config, methodRefs, fieldRefs, locals);
                     AssembleFinalColor(il, methodRefs, locals);
             //}
             //ReturnTransparentBlack(il);
@@ -839,6 +839,7 @@ namespace GraphicsLib.Types3.ShaderGenerators
 
         private static void CalculateLighting(
             ILGenerator il,
+            ShaderConfiguration config,
             PixelShaderMethodReferences methodRefs,
             PixelShaderFieldReferences fieldRefs,
             PixelShaderLocals locals)
@@ -847,7 +848,10 @@ namespace GraphicsLib.Types3.ShaderGenerators
             InitializeFinalColor(il, locals);
             CalculateAmbientLighting(il, methodRefs, fieldRefs, locals);
             CalculatePbrLighting(il, methodRefs, fieldRefs, locals);
-            AddEmissiveContribution(il, locals);
+            if(config.Features.HasFlag(ShaderFeatures.EmissiveTexture))
+            {
+                AddEmissiveContribution(il, locals);
+            }
         }
 
         private static void CalculateViewDirection(
